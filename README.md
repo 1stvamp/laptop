@@ -18,7 +18,7 @@ generated/flake.lock   nix's lock, derived from knixl.lock.kdl, commit it
 
 ## The flake
 
-knixl writes `generated/flake.nix` in input mode (knixl 1.5.0, ADR 0014). The
+knixl writes `generated/flake.nix` in input mode (ADR 0014, knixl 1.5.0 or later). The
 inputs are declared in `system {}` in `knixl.kdl`: nixpkgs, nixos-hardware,
 disko and home-manager, the last three following our nixpkgs.
 
@@ -59,6 +59,10 @@ metal you can also skip the regenerate cycle: fw13's `raw-nix` carries a
 `specialisation.plasma`, so Plasma is a boot menu entry alongside the default.
 
 ## Loop
+
+knixl itself is pinned in `mise.toml` (1.5.2, from the GitHub release, whose
+build provenance mise verifies on install), so `mise install` in this directory
+gets the version the lock was written with.
 
 - `knixl plan` : what would change, writes nothing.
 - `knixl generate` : apply. Refuses hand-edited generated files without `--accept-drift`.
@@ -106,7 +110,7 @@ Worth filing against knixl itself rather than working around forever:
 
 ## Verification status
 
-Checked, with knixl 1.5.0:
+Checked, with knixl 1.5.0 (1.5.1 and 1.5.2 regenerate only the version header):
 
 - `knixl plan` and `knixl check` are clean.
 - All four `nixosConfigurations` evaluate to a toplevel derivation, and so does
@@ -114,8 +118,8 @@ Checked, with knixl 1.5.0:
 - Adding `follows nixpkgs` to nixos-hardware left fw13's toplevel derivation
   unchanged.
 - `vm-gnome`'s build-vm output builds. That caught `vm-guest` emitting its sizes
-  as strings, which the oracle can't see (it punts on an `"auto" or int` type),
-  so those sets now use `(scalar)`.
+  as strings, which the 1.5.0 oracle couldn't see (1.5.1 now checks `diskSize`,
+  but not `memorySize` or `cores`), so those sets now use `(scalar)`.
 
 Not checked:
 
