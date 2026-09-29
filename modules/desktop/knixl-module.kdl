@@ -1,0 +1,57 @@
+// A declarative knixl module: one desktop environment plus its display manager.
+//
+// The stdlib has no desktop module, so this is the local one. All stock NixOS
+// options, all plain bool sets, which is exactly what the declarative template
+// grammar covers (docs/03) with no need for a Rust built-in.
+//
+// Each DE is a bool flag child gated with `when-flag`, so the choice is made at
+// GENERATION time: flip the flag, regenerate, and the emitted Nix contains only
+// that desktop. Nothing here stops you setting two flags at once; the oracle
+// validates paths, not mutual exclusion, so a double-enable surfaces as a NixOS
+// eval conflict rather than a knixl error. One flag per host is the contract.
+//
+// Package-valued options (gnomeExtensions.*, fonts.packages) are deliberately
+// absent: `set` emits scalars, lists and strings, not `pkgs.*` references, so
+// extensions belong in `package` nodes on the host instead.
+
+module name="desktop" version="1.0.0" {
+    summary "One desktop environment (GNOME, KDE Plasma 6, or COSMIC) and its display manager."
+    claims-node "desktop"
+
+    schema {
+        child "gnome" type="bool" \
+            doc="GNOME on GDM. Fullscreen-and-overview paradigm; pair with the pop-shell package for Pop-style auto-tiling."
+        child "plasma" type="bool" \
+            doc="KDE Plasma 6 on SDDM. Native tile editor (Meta+T), virtual desktops, fully remappable shortcuts."
+        child "cosmic" type="bool" \
+            doc="COSMIC on cosmic-greeter. The Pop!_OS desktop. Still beta; built-in tiling toggle is Super+Y in-session."
+        child "wayland" type="bool" \
+            doc="Prefer Wayland on the display manager. Only affects SDDM (GDM and cosmic-greeter are Wayland already)."
+        child "autologin" repeated=#true \
+            doc="Skip the greeter and log this user straight in. At most one. Handy for throwaway VMs." {
+            arg "user" type="string" required=#true
+        }
+    }
+
+    emit {
+        when-flag "gnome" {
+            set "services.displayManager.gdm.enable" #true
+            set "services.desktopManager.gnome.enable" #true
+        }
+        when-flag "plasma" {
+            set "services.displayManager.sddm.enable" #true
+            set "services.desktopManager.plasma6.enable" #true
+        }
+        when-flag "cosmic" {
+            set "services.displayManager.cosmic-greeter.enable" #true
+            set "services.desktopManager.cosmic.enable" #true
+        }
+        when-flag "wayland" {
+            set "services.displayManager.sddm.wayland.enable" #true
+        }
+        for-each "a" in "autologin" {
+            set "services.displayManager.autoLogin.enable" #true
+            set "services.displayManager.autoLogin.user" "{a.user}"
+        }
+    }
+}

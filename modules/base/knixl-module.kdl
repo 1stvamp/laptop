@@ -1,0 +1,83 @@
+// A declarative knixl module: the settings every host in this project repeats.
+//
+// knixl host files are standalone (there is no include mechanism), so without
+// this each host would carry the same raw-nix block four times. Folding it into
+// a module keeps the repetition in one schema and out of the host KDL.
+//
+// `nix-feature` is a repeated child collected into a list, which is how you get
+// a list-valued option out of the declarative grammar without a Rust built-in.
+
+module name="base" version="1.0.0" {
+    summary "Base system settings: locale, keyboard, networking, audio, power, bootloader."
+    claims-node "base"
+
+    schema {
+        arg "state-version" type="string" required=#true \
+            doc="NixOS release for system.stateVersion, e.g. 26.05. Set once and leave it."
+        child "timezone" repeated=#true doc="tzdata name, e.g. Europe/London. At most one." {
+            arg "tz" type="string" required=#true
+        }
+        child "locale" repeated=#true doc="Default locale, e.g. en_GB.UTF-8. At most one." {
+            arg "value" type="string" required=#true
+        }
+        child "keymap" repeated=#true \
+            doc="Keyboard layout, applied to both the console and X/Wayland. At most one." {
+            arg "layout" type="string" required=#true
+        }
+        child "nix-feature" type="string" repeated=#true \
+            doc="An experimental Nix feature, e.g. nix-command, flakes."
+        child "allow-unfree" type="bool" doc="Allow unfree packages in nixpkgs."
+        child "networkmanager" type="bool" doc="NetworkManager for wifi and wired."
+        child "pipewire" type="bool" doc="PipeWire with ALSA and PulseAudio compatibility."
+        child "power-profiles" type="bool" \
+            doc="power-profiles-daemon. Preferred over TLP on the AMD Framework."
+        child "fwupd" type="bool" doc="fwupd, for BIOS and firmware updates via fwupdmgr."
+        child "printing" type="bool" doc="CUPS."
+        child "systemd-boot" type="bool" doc="systemd-boot rather than GRUB."
+        child "efi-vars" type="bool" \
+            doc="Let the installer touch EFI variables. True on real hardware, false in a VM."
+    }
+
+    emit {
+        set "system.stateVersion" "{state-version}"
+        set "nix.settings.experimental-features" (collect-opt)"nix-feature"
+
+        for-each "t" in "timezone" {
+            set "time.timeZone" "{t.tz}"
+        }
+        for-each "l" in "locale" {
+            set "i18n.defaultLocale" "{l.value}"
+        }
+        for-each "k" in "keymap" {
+            set "console.keyMap" "{k.layout}"
+            set "services.xserver.xkb.layout" "{k.layout}"
+        }
+
+        when-flag "allow-unfree" {
+            set "nixpkgs.config.allowUnfree" #true
+        }
+        when-flag "networkmanager" {
+            set "networking.networkmanager.enable" #true
+        }
+        when-flag "pipewire" {
+            set "services.pipewire.enable" #true
+            set "services.pipewire.alsa.enable" #true
+            set "services.pipewire.pulse.enable" #true
+        }
+        when-flag "power-profiles" {
+            set "services.power-profiles-daemon.enable" #true
+        }
+        when-flag "fwupd" {
+            set "services.fwupd.enable" #true
+        }
+        when-flag "printing" {
+            set "services.printing.enable" #true
+        }
+        when-flag "systemd-boot" {
+            set "boot.loader.systemd-boot.enable" #true
+        }
+        when-flag "efi-vars" {
+            set "boot.loader.efi.canTouchEfiVariables" #true
+        }
+    }
+}

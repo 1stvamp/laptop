@@ -1,0 +1,41 @@
+// Throwaway VM for trying plasma. Identical to its siblings but for the desktop flag.
+host "vm-plasma" {
+    system "x86_64-linux"
+    nixpkgs release="26.05"
+
+    base "26.05" {
+        timezone "Europe/London"
+        locale "en_GB.UTF-8"
+        keymap "gb"
+        nix-feature "nix-command"
+        nix-feature "flakes"
+        allow-unfree
+        networkmanager
+        pipewire
+        systemd-boot
+    }
+
+    desktop {
+        plasma
+        wayland
+        autologin "wes"
+    }
+
+    vm-guest {
+        memory-mb 8192
+        cores 4
+        disk-mb 16384
+        root-label "nixos" fs-type="ext4"
+        guest-agent
+        spice
+    }
+
+    user "wes" {
+        description "Wes"
+        group "wheel"
+        group "networkmanager"
+        group "video"
+    }
+
+    package "kdePackages.kate"
+}

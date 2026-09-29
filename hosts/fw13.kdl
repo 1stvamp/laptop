@@ -1,0 +1,115 @@
+// Framework Laptop 13, AMD Ryzen AI 300 series.
+
+host "fw13" {
+    system "x86_64-linux"
+    nixpkgs release="26.05"
+
+    // Replaces the project set in knixl.kdl (ADR 0008), so disko and
+    // home-manager are repeated here alongside the hardware profile.
+    oracle-modules {
+        module "nixos-hardware" input="nixos-hardware" attr="framework-amd-ai-300-series"
+        module "disko" input="disko" attr="disko"
+        module "home-manager" input="home-manager" attr="home-manager"
+    }
+
+    base "26.05" {
+        timezone "Europe/London"
+        locale "en_GB.UTF-8"
+        keymap "gb"
+        nix-feature "nix-command"
+        nix-feature "flakes"
+        allow-unfree
+        networkmanager
+        pipewire
+        power-profiles   // preferred over TLP on the AMD Framework
+        fwupd            // BIOS 3.05 or newer, or standby burns watts
+        printing
+        systemd-boot
+        efi-vars
+    }
+
+    // Swap the flag and regenerate to change desktop. The plasma specialisation
+    // in raw-nix below also puts Plasma on the boot menu.
+    desktop {
+        gnome
+    }
+
+    // LUKS2 over the whole NVMe, ext4 root. See the README on why this is not
+    // btrfs-with-subvolumes: knixl's disko built-in models ext4/vfat/swap/zfs
+    // content under luks, and btrfs subvolumes are not in that set.
+    disko {
+        disk "main" device="/dev/nvme0n1" {
+            partition "ESP" size="1G" type="EF00" {
+                filesystem format="vfat" mountpoint="/boot"
+            }
+            partition "crypt" size="100%" {
+                luks name="cryptroot" {
+                    filesystem format="ext4" mountpoint="/"
+                }
+            }
+        }
+    }
+
+    user "wes" {
+        description "Wes"
+        group "wheel"
+        group "networkmanager"
+        group "video"
+        group "kvm"
+        group "libvirtd"
+        group "incus-admin"
+        // ssh-key "ssh-ed25519 AAAA... wes@fw13"
+    }
+
+    home-manager "wes" state-version="26.05" {
+        session-var "EDITOR" "nvim"
+        session-var "PAGER" "less"
+        program "git"
+        program "zsh"
+        program "direnv"   // per-project devshells: the big win over Ubuntu
+        program "fzf"
+    }
+
+    package "ripgrep"
+    package "fd"
+    package "jq"
+    package "neovim"       // runtime only; keep the nvim-ai lua config unmanaged
+    package "qemu_kvm"
+    package "cloud-hypervisor"
+    package "firecracker"
+    package "gnomeExtensions.pop-shell"
+    package "gnomeExtensions.tiling-assistant"
+
+    // The escape hatch, for what the stdlib and the declarative grammar cannot
+    // reach: package-valued options (a `set` emits scalars and lists, not
+    // `pkgs.*` refs), the container/VM stack, which has no stdlib module, and
+    // specialisations.
+    // Opaque to the oracle, still hashed into the lock, so drift still catches it.
+    raw-nix {
+        #"""
+        # Zen 5 (Strix / Krackan Point) needs a recent kernel; the LTS series
+        # lacks the platform patches for stability, power and performance.
+        boot.kernelPackages = pkgs.linuxPackages_latest;
+
+        fonts.packages = with pkgs; [ nerd-fonts.jetbrains-mono ];
+
+        virtualisation.libvirtd.enable = true;
+        virtualisation.podman = {
+          enable = true;
+          dockerCompat = true;
+          defaultNetwork.settings.dns_enabled = true;
+        };
+        programs.virt-manager.enable = true;
+
+        # Pick-at-boot Plasma entry, for testing on the metal without a
+        # regenerate cycle.
+        specialisation.plasma.configuration = {
+          services.desktopManager.gnome.enable = lib.mkForce false;
+          services.displayManager.gdm.enable = lib.mkForce false;
+          services.displayManager.sddm.enable = true;
+          services.displayManager.sddm.wayland.enable = true;
+          services.desktopManager.plasma6.enable = true;
+        };
+        """#
+    }
+}

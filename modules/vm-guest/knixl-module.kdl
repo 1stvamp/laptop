@@ -1,0 +1,55 @@
+// A declarative knixl module: the bits that make a host pleasant to run under
+// `nixos-rebuild build-vm`. Guest agents, a root filesystem stub, and the
+// vmVariant sizing knobs.
+//
+// virtualisation.vmVariant.* only takes effect in the build-vm variant, so it is
+// inert on real hardware. The root fileSystems entry is a stub: build-vm overlays
+// its own disk image over it. Note the quoted "/" path segment, which the grammar
+// handles as an AttrKey::Quoted (docs/04).
+
+module name="vm-guest" version="1.0.0" {
+    summary "QEMU guest agents, a root filesystem stub, and build-vm sizing."
+    claims-node "vm-guest"
+
+    schema {
+        child "memory-mb" repeated=#true \
+            doc="RAM for the build-vm variant. COSMIC and Plasma want 8192 or more. At most one." {
+            arg "mb" type="int" required=#true
+        }
+        child "cores" repeated=#true doc="vCPUs for the build-vm variant. At most one." {
+            arg "n" type="int" required=#true
+        }
+        child "disk-mb" repeated=#true doc="Disk size for the build-vm variant. At most one." {
+            arg "mb" type="int" required=#true
+        }
+        child "root-label" repeated=#true \
+            doc="Filesystem label for the root stub. At most one." {
+            arg "label" type="string" required=#true
+            prop "fs-type" type="string" required=#true
+        }
+        child "guest-agent" type="bool" doc="qemu-guest-agent, for graceful shutdown and host integration."
+        child "spice" type="bool" doc="spice-vdagent, for clipboard sharing and dynamic display resize."
+    }
+
+    emit {
+        for-each "m" in "memory-mb" {
+            set "virtualisation.vmVariant.virtualisation.memorySize" (scalar)"{m.mb}"
+        }
+        for-each "c" in "cores" {
+            set "virtualisation.vmVariant.virtualisation.cores" (scalar)"{c.n}"
+        }
+        for-each "d" in "disk-mb" {
+            set "virtualisation.vmVariant.virtualisation.diskSize" (scalar)"{d.mb}"
+        }
+        for-each "r" in "root-label" {
+            set "fileSystems.\"/\".device" "/dev/disk/by-label/{r.label}"
+            set "fileSystems.\"/\".fsType" "{r.fs-type}"
+        }
+        when-flag "guest-agent" {
+            set "services.qemuGuest.enable" #true
+        }
+        when-flag "spice" {
+            set "services.spice-vdagentd.enable" #true
+        }
+    }
+}

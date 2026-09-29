@@ -1,0 +1,28 @@
+// Project root. `hosts/` beside this file is what makes knixl treat this as the root.
+//
+// knixl generates the whole flake (generated/flake.nix) in input mode (ADR 0014).
+// nixpkgs carries no rev: its rev is the hosts' shared baseline from knixl.lock.kdl.
+// Branch refs are refused in input mode, so home-manager is pinned to the
+// release-26.05 tip by rev; the rest resolve on `knixl upgrade`.
+system {
+    state-version "26.05"
+    formatter "nixfmt-rfc-style"
+    input "nixpkgs" url="github:NixOS/nixpkgs"
+    input "nixos-hardware" url="github:NixOS/nixos-hardware" {
+        follows nixpkgs="nixpkgs"
+    }
+    input "disko" url="github:nix-community/disko" {
+        follows nixpkgs="nixpkgs"
+    }
+    input "home-manager" url="github:nix-community/home-manager" \
+        rev="a6631107a83ceab5872f298a2ea710859c80c4cb" {
+        follows nixpkgs="nixpkgs"
+    }
+}
+
+// Each entry both validates its options and imports its NixOS module into every
+// host. fw13 replaces this set with its own (ADR 0008) to add nixos-hardware.
+oracle-modules {
+    module "disko" input="disko" attr="disko"
+    module "home-manager" input="home-manager" attr="home-manager"
+}
