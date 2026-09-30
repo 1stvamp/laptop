@@ -39,12 +39,13 @@ and home-manager modules too. Both are inert without config.
 ## Testing desktops
 
 ```sh
-knixl generate
-nixos-rebuild build-vm --flake ./generated#vm-gnome   # or vm-plasma, vm-cosmic
-./result/bin/run-vm-gnome-vm
+mise run vm              # gnome; or: mise run vm plasma, mise run vm cosmic
 ```
 
-Autologin as `wes`, 8GB, 4 cores, nothing persists between runs.
+That regenerates from the KDL, builds the VM into `result-vm-<desktop>` and boots
+it in a window. Autologin as `wes`, 8GB, 4 cores. The disk is a fresh temp image
+every run and is deleted when the VM exits, so nothing persists between runs.
+`mise run vm:build <desktop>` does the first two steps without booting.
 
 Changing the laptop's desktop is one flag in `hosts/fw13.kdl`:
 
@@ -117,13 +118,16 @@ Checked, with knixl 1.5.0 (1.5.1 and 1.5.2 regenerate only the version header):
   fw13's `specialisation.plasma`.
 - Adding `follows nixpkgs` to nixos-hardware left fw13's toplevel derivation
   unchanged.
+- `mise run vm gnome` boots headless to the graphical target with no failed units.
+  That caught `base` setting `console.keyMap = "gb"`, which kbd doesn't have (it
+  calls it `uk`), so the console keymap is now derived from the XKB layout.
 - `vm-gnome`'s build-vm output builds. That caught `vm-guest` emitting its sizes
   as strings, which the 1.5.0 oracle couldn't see (1.5.1 now checks `diskSize`,
   but not `memorySize` or `cores`), so those sets now use `(scalar)`.
 
 Not checked:
 
-- Booting any of it, building the plasma and cosmic VMs, or anything on the metal.
+- The GNOME desktop in a real window, the plasma and cosmic VMs, or anything on the metal.
 - `hardware-configuration.nix`. disko supplies the filesystems and nixos-hardware
   the platform bits, so the plan is to do without it, but `nixos-generate-config
   --no-filesystems` on the target is worth diffing against the evaluated config

@@ -1,2 +1,35 @@
 [tools]
 "github:1stvamp/knixl" = "1.5.2"
+
+[tasks."vm:build"]
+description = "Regenerate from KDL and build a desktop test VM"
+usage = '''
+arg "[desktop]" help="Which VM to build" default="gnome" {
+  choices "gnome" "plasma" "cosmic"
+}
+'''
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+host="vm-${usage_desktop?}"
+knixl generate
+nix build "./generated#nixosConfigurations.${host}.config.system.build.vm" -o "result-${host}"
+'''
+
+[tasks.vm]
+description = "Build and boot a desktop test VM (fresh disk every run)"
+usage = '''
+arg "[desktop]" help="Which VM to boot" default="gnome" {
+  choices "gnome" "plasma" "cosmic"
+}
+'''
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+host="vm-${usage_desktop?}"
+mise run vm:build "${usage_desktop?}"
+# The runner otherwise keeps ./<host>.qcow2 across boots.
+disk_dir="$(mktemp -d)"
+trap 'rm -rf "$disk_dir"' EXIT
+NIX_DISK_IMAGE="$disk_dir/${host}.qcow2" "./result-${host}/bin/run-${host}-vm"
+'''
