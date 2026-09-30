@@ -10,10 +10,10 @@ lock version=1 {
     flake-input "home-manager" url="github:nix-community/home-manager" rev="a6631107a83ceab5872f298a2ea710859c80c4cb"
     flake-input "nixos-hardware" url="github:NixOS/nixos-hardware" rev="30d48a0ec6035f8140d0125af274f0de95f1e9b5"
 
-    input "hosts/fw13.kdl" hash="blake3:afb4e398866df48da53de93049ab08a575583616b581d69d35b411154029332b"
-    input "hosts/vm-cosmic.kdl" hash="blake3:e26f37fdb9881f3949df616fc0cc3cb23c8d4dde7586fe410bbc2d9706759d63"
-    input "hosts/vm-gnome.kdl" hash="blake3:743194f51ed544c6fa320f34409770fe991f668b78cdeaf549f5426348d51894"
-    input "hosts/vm-plasma.kdl" hash="blake3:daa189a83bfcea3b779cfe9222094713f1b8bb559c0dbfb78c9dc33840213111"
+    input "hosts/fw13.kdl" hash="blake3:09d33fb673d0ede3c634ccdf42b72b13a00bd017aaebed71d2ddf87c57584a6b"
+    input "hosts/vm-cosmic.kdl" hash="blake3:24a7ccfa74648cc164729c5b9c99b52c4361ecf1dcefaa19e007c1194f15e5af"
+    input "hosts/vm-gnome.kdl" hash="blake3:4af938a5e3acbc55b12893ca298e8a880bb0a1cfbde107307754adb04a07b93d"
+    input "hosts/vm-plasma.kdl" hash="blake3:957be77900b4b434480361a9ec2547276f5c2b0e8d4bcfd93eb4a1cdebed560d"
 
     module "backups" version="0.2.1"
     module "base" version="1.0.0"
@@ -64,7 +64,7 @@ lock version=1 {
     }
 
     output "generated/hosts/fw13.nix" {
-        hash "blake3:637fa3510019d2112a387318823d25301384612395c022f0bc197542d003cca0"
+        hash "blake3:362a355cd0e3aad928cfb120df255c1326e8ab8abc40334d549bf1210a4e8fb6"
         from "hosts/fw13.kdl"
         modules "base" "desktop" "disko" "home-manager" "host" "package" "raw-nix" "user"
     }

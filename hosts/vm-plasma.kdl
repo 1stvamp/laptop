@@ -1,4 +1,4 @@
-// Throwaway VM for trying plasma. Identical to its siblings but for the desktop flag.
+// Throwaway VM for trying Plasma.
 host "vm-plasma" {
     system "x86_64-linux"
     nixpkgs release="26.05"

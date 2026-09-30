@@ -1,4 +1,4 @@
-// Throwaway VM for trying gnome. Identical to its siblings but for the desktop flag.
+// Throwaway VM for trying GNOME.
 host "vm-gnome" {
     system "x86_64-linux"
     nixpkgs release="26.05"

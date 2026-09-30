@@ -4,8 +4,7 @@ host "fw13" {
     system "x86_64-linux"
     nixpkgs release="26.05"
 
-    // Replaces the project set in knixl.kdl (ADR 0008), so disko and
-    // home-manager are repeated here alongside the hardware profile.
+    // Replaces knixl.kdl's set rather than adding to it, hence the repeats.
     oracle-modules {
         module "nixos-hardware" input="nixos-hardware" attr="framework-amd-ai-300-series"
         module "disko" input="disko" attr="disko"
@@ -21,22 +20,18 @@ host "fw13" {
         allow-unfree
         networkmanager
         pipewire
-        power-profiles   // preferred over TLP on the AMD Framework
+        power-profiles
         fwupd            // BIOS 3.05 or newer, or standby burns watts
         printing
         systemd-boot
         efi-vars
     }
 
-    // Swap the flag and regenerate to change desktop. The plasma specialisation
-    // in raw-nix below also puts Plasma on the boot menu.
     desktop {
         gnome
     }
 
-    // LUKS2 over the whole NVMe, ext4 root. See the README on why this is not
-    // btrfs-with-subvolumes: knixl's disko built-in models ext4/vfat/swap/zfs
-    // content under luks, and btrfs subvolumes are not in that set.
+    // ext4 rather than btrfs: the disko built-in has no btrfs (README, known gaps).
     disko {
         disk "main" device="/dev/nvme0n1" {
             partition "ESP" size="1G" type="EF00" {
@@ -80,11 +75,8 @@ host "fw13" {
     package "gnomeExtensions.pop-shell"
     package "gnomeExtensions.tiling-assistant"
 
-    // The escape hatch, for what the stdlib and the declarative grammar cannot
-    // reach: package-valued options (a `set` emits scalars and lists, not
-    // `pkgs.*` refs), the container/VM stack, which has no stdlib module, and
-    // specialisations.
-    // Opaque to the oracle, still hashed into the lock, so drift still catches it.
+    // What KDL can't express yet: package values, the VM/container stack and
+    // specialisations. The oracle can't see into it, but the lock still hashes it.
     raw-nix {
         #"""
         # Zen 5 (Strix / Krackan Point) needs a recent kernel; the LTS series
@@ -101,8 +93,7 @@ host "fw13" {
         };
         programs.virt-manager.enable = true;
 
-        # Pick-at-boot Plasma entry, for testing on the metal without a
-        # regenerate cycle.
+        # A Plasma boot menu entry, to try it on the metal without regenerating.
         specialisation.plasma.configuration = {
           services.desktopManager.gnome.enable = lib.mkForce false;
           services.displayManager.gdm.enable = lib.mkForce false;

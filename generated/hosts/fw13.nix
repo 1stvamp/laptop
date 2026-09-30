@@ -106,8 +106,7 @@
   };
   programs.virt-manager.enable = true;
 
-  # Pick-at-boot Plasma entry, for testing on the metal without a
-  # regenerate cycle.
+  # A Plasma boot menu entry, to try it on the metal without regenerating.
   specialisation.plasma.configuration = {
     services.desktopManager.gnome.enable = lib.mkForce false;
     services.displayManager.gdm.enable = lib.mkForce false;

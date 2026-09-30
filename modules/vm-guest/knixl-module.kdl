@@ -1,11 +1,5 @@
-// A declarative knixl module: the bits that make a host pleasant to run under
-// `nixos-rebuild build-vm`. Guest agents, a root filesystem stub, and the
-// vmVariant sizing knobs.
-//
-// virtualisation.vmVariant.* only takes effect in the build-vm variant, so it is
-// inert on real hardware. The root fileSystems entry is a stub: build-vm overlays
-// its own disk image over it. Note the quoted "/" path segment, which the grammar
-// handles as an AttrKey::Quoted (docs/04).
+// vmVariant settings only apply under build-vm, so they're inert on real hardware.
+// The root filesystem is a stub; build-vm puts its own disk image over it.
 
 module name="vm-guest" version="1.0.0" {
     summary "QEMU guest agents, a root filesystem stub, and build-vm sizing."

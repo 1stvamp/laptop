@@ -1,11 +1,4 @@
-// A declarative knixl module: the settings every host in this project repeats.
-//
-// knixl host files are standalone (there is no include mechanism), so without
-// this each host would carry the same raw-nix block four times. Folding it into
-// a module keeps the repetition in one schema and out of the host KDL.
-//
-// `nix-feature` is a repeated child collected into a list, which is how you get
-// a list-valued option out of the declarative grammar without a Rust built-in.
+// Host files can't include each other, so this holds what every host repeats.
 
 module name="base" version="1.0.0" {
     summary "Base system settings: locale, keyboard, networking, audio, power, bootloader."
@@ -49,7 +42,7 @@ module name="base" version="1.0.0" {
             set "i18n.defaultLocale" "{l.value}"
         }
         for-each "k" in "keymap" {
-            // The console keymap is derived from the XKB layout: kbd names differ ("uk" vs "gb").
+            // kbd and XKB name layouts differently (uk vs gb), so derive the console one.
             set "services.xserver.xkb.layout" "{k.layout}"
             set "console.useXkbConfig" #true
         }
