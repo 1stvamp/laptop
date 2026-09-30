@@ -27,6 +27,11 @@ module name="vm-guest" version="1.0.0" {
             arg "label" type="string" required=#true
             prop "fs-type" type="string" required=#true
         }
+        child "initial-password" repeated=#true \
+            doc="Plaintext password for a user, for getting past an idle lock screen. Throwaway VMs only: it lands in the store and in git." {
+            arg "user" type="string" required=#true
+            prop "password" type="string" required=#true
+        }
         child "guest-agent" type="bool" doc="qemu-guest-agent, for graceful shutdown and host integration."
         child "spice" type="bool" doc="spice-vdagent, for clipboard sharing and dynamic display resize."
     }
@@ -44,6 +49,9 @@ module name="vm-guest" version="1.0.0" {
         for-each "r" in "root-label" {
             set "fileSystems.\"/\".device" "/dev/disk/by-label/{r.label}"
             set "fileSystems.\"/\".fsType" "{r.fs-type}"
+        }
+        for-each "p" in "initial-password" {
+            set "users.users.{p.user}.initialPassword" "{p.password}"
         }
         when-flag "guest-agent" {
             set "services.qemuGuest.enable" #true

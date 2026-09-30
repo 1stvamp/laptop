@@ -35,6 +35,7 @@
   virtualisation.vmVariant.virtualisation.diskSize = 16384;
   fileSystems."/".device = "/dev/disk/by-label/nixos";
   fileSystems."/".fsType = "ext4";
+  users.users."wes".initialPassword = "wes";
   services.qemuGuest.enable = true;
   services.spice-vdagentd.enable = true;
   users.users."wes".isNormalUser = true;

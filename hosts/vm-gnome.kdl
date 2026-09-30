@@ -27,6 +27,7 @@ host "vm-gnome" {
         root-label "nixos" fs-type="ext4"
         guest-agent
         spice
+        initial-password "wes" password="wes"
     }
 
     user "wes" {
