@@ -1,5 +1,5 @@
 [tools]
-"github:1stvamp/knixl" = "1.5.2"
+"github:1stvamp/knixl" = "1.6.0"
 
 [tasks."vm:build"]
 description = "Regenerate from KDL and build a desktop test VM"

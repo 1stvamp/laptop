@@ -1,5 +1,5 @@
 lock version=1 {
-    tool version="1.5.2"
+    tool version="1.6.0"
     formatter name="nixfmt-rfc-style" version="1.3.1"
     oracle nixpkgs-rev="" options-hash="" {
         oracle-module name="disko" url="https://github.com/nix-community/disko" rev="725ea35e410ad83be4931d1bff7e090eacaf3563" attr="disko"
@@ -58,31 +58,31 @@ lock version=1 {
     }
 
     output "generated/flake.nix" {
-        hash "blake3:cf93be306049bcc73ad32313771ad38bb4c754594a1406493239197d12024f02"
+        hash "blake3:ff09264e90f1b453e01390d44c58c83ef054df93fc95baf0036145c5886a54c3"
         from "knixl.kdl"
         modules
     }
 
     output "generated/hosts/fw13.nix" {
-        hash "blake3:362a355cd0e3aad928cfb120df255c1326e8ab8abc40334d549bf1210a4e8fb6"
+        hash "blake3:39a4e0414ba6f421fa996f51e491943f2dff3d65f9a4b9888f5f5d8690c85114"
         from "hosts/fw13.kdl"
         modules "base" "desktop" "disko" "home-manager" "host" "package" "raw-nix" "user"
     }
 
     output "generated/hosts/vm-cosmic.nix" {
-        hash "blake3:1a74a8a2cd2221bf65da50423a7a053e48c47c4576b5b2366c60f08f6861fe42"
+        hash "blake3:3cba6853a6539e9762c7ab3c176fe286bb6bfcd8e925ae225e9fecef96c36c57"
         from "hosts/vm-cosmic.kdl"
         modules "base" "desktop" "host" "user" "vm-guest"
     }
 
     output "generated/hosts/vm-gnome.nix" {
-        hash "blake3:532224b33296aaaadf3294be87dd389d1f11d2687cdf51511987e0aeff1c44bb"
+        hash "blake3:fbdc23c355d1bd99a2842b0288e8304424186b88e73a1a8493b337d7f3da7b34"
         from "hosts/vm-gnome.kdl"
         modules "base" "desktop" "host" "package" "user" "vm-guest"
     }
 
     output "generated/hosts/vm-plasma.nix" {
-        hash "blake3:d6734fb61c8bf734f41ae41a52403e9a0fa31355471dc57b70269a719d659bab"
+        hash "blake3:0f3766534814d82a7cce7c710341634346184e2126c3adb83e8adae41b22dd7c"
         from "hosts/vm-plasma.kdl"
         modules "base" "desktop" "host" "package" "user" "vm-guest"
     }

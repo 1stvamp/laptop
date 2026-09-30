@@ -65,7 +65,7 @@ metal you can also skip the regenerate cycle: fw13's `raw-nix` carries a
 
 ## Loop
 
-knixl itself is pinned in `mise.toml` (1.5.2, from the GitHub release, whose build
+knixl itself is pinned in `mise.toml` (1.6.0, from the GitHub release, whose build
 provenance mise verifies on install), so `mise install` in this directory gets the
 version the lock was written with.
 
@@ -114,7 +114,8 @@ Worth filing against knixl itself rather than working around forever:
 
 ## Verification status
 
-Checked, with knixl 1.5.0 (1.5.1 and 1.5.2 regenerate only the version header):
+Checked, with knixl 1.5.0. Later releases up to 1.6.0 left every system's
+toplevel derivation unchanged:
 
 - `knixl plan` and `knixl check` are clean.
 - All four `nixosConfigurations` evaluate to a toplevel derivation, and so does

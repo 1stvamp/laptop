@@ -20,8 +20,6 @@
   };
   outputs =
     { nixpkgs, ... }@inputs:
-    let
-    in
     {
       nixosConfigurations = {
         "fw13" = nixpkgs.lib.nixosSystem {
