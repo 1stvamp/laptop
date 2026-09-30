@@ -64,25 +64,25 @@ lock version=1 {
     }
 
     output "generated/hosts/fw13.nix" {
-        hash "blake3:0eca07229d4d16ba1edb0ad1b85c1b9de94972b69df0d30c8830f579ade68d9f"
+        hash "blake3:637fa3510019d2112a387318823d25301384612395c022f0bc197542d003cca0"
         from "hosts/fw13.kdl"
         modules "base" "desktop" "disko" "home-manager" "host" "package" "raw-nix" "user"
     }
 
     output "generated/hosts/vm-cosmic.nix" {
-        hash "blake3:998bc126a567f10cf484fcf083b93b9f4fef8f705b9672b6b173e9ac0af00142"
+        hash "blake3:f5421e249b638a2ca37ba521b8d029af79361b0e536f16f3763252b79e941963"
         from "hosts/vm-cosmic.kdl"
         modules "base" "desktop" "host" "user" "vm-guest"
     }
 
     output "generated/hosts/vm-gnome.nix" {
-        hash "blake3:015f1f3ebe9279ff8d29d28cb8ede8b57032e63f726857b28f7f867b208cee7b"
+        hash "blake3:0d7accd1c3031a824df43bb02649837304f9e3c794a04b93694c7d5ab03355a8"
         from "hosts/vm-gnome.kdl"
         modules "base" "desktop" "host" "package" "user" "vm-guest"
     }
 
     output "generated/hosts/vm-plasma.nix" {
-        hash "blake3:f7985ea4dd4e3f111b7d696752f177e39fd1e4eaad2f47c02ffc4385649e2e50"
+        hash "blake3:23fc9232ffa94c03d060e2487b1ecf3f051bdd927c5902d78b4640ba954b194d"
         from "hosts/vm-plasma.kdl"
         modules "base" "desktop" "host" "package" "user" "vm-guest"
     }

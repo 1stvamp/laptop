@@ -17,8 +17,8 @@
   ];
   time.timeZone = "Europe/London";
   i18n.defaultLocale = "en_GB.UTF-8";
-  console.keyMap = "gb";
   services.xserver.xkb.layout = "gb";
+  console.useXkbConfig = true;
   nixpkgs.config.allowUnfree = true;
   networking.networkmanager.enable = true;
   services.pipewire.enable = true;

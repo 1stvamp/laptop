@@ -49,8 +49,9 @@ module name="base" version="1.0.0" {
             set "i18n.defaultLocale" "{l.value}"
         }
         for-each "k" in "keymap" {
-            set "console.keyMap" "{k.layout}"
+            // The console keymap is derived from the XKB layout: kbd names differ ("uk" vs "gb").
             set "services.xserver.xkb.layout" "{k.layout}"
+            set "console.useXkbConfig" #true
         }
 
         when-flag "allow-unfree" {
