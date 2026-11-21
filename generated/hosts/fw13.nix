@@ -8,15 +8,26 @@
   ...
 }:
 {
+  imports = [
+    ../../home
+    ../../pkgs/claude-desktop
+  ];
+
   nixpkgs.hostPlatform = "x86_64-linux";
   networking.hostName = "fw13";
   system.stateVersion = "26.05";
+  boot.loader.systemd-boot.enable = true;
+  boot.loader.efi.canTouchEfiVariables = true;
+  boot.kernelPackages = pkgs.linuxPackages_latest;
+  time.timeZone = "Europe/London";
+  i18n.defaultLocale = "en_GB.UTF-8";
   nix.settings.experimental-features = [
     "nix-command"
     "flakes"
   ];
-  time.timeZone = "Europe/London";
-  i18n.defaultLocale = "en_GB.UTF-8";
+  nix.settings.trusted-users = [
+    "wes"
+  ];
   services.xserver.xkb.layout = "gb";
   console.useXkbConfig = true;
   nixpkgs.config.allowUnfree = true;
@@ -27,8 +38,7 @@
   services.power-profiles-daemon.enable = true;
   services.fwupd.enable = true;
   services.printing.enable = true;
-  boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
+  programs.nix-ld.enable = true;
   services.displayManager.gdm.enable = true;
   services.desktopManager.gnome.enable = true;
   disko.devices.disk."main" = {
@@ -80,6 +90,13 @@
   home-manager.users."wes".programs."zsh".enable = true;
   home-manager.users."wes".programs."direnv".enable = true;
   home-manager.users."wes".programs."fzf".enable = true;
+  home-manager.users."wes".programs."starship".enable = true;
+  home-manager.users."wes".programs."zoxide".enable = true;
+  home-manager.users."wes".programs."broot".enable = true;
+  home-manager.users."wes".programs."bat".enable = true;
+  home-manager.users."wes".programs."gh".enable = true;
+  home-manager.users."wes".programs."mise".enable = true;
+  home-manager.users."wes".programs."wezterm".enable = true;
   environment.systemPackages = [
     pkgs.ripgrep
     pkgs.fd
@@ -90,13 +107,36 @@
     pkgs.firecracker
     pkgs.gnomeExtensions.pop-shell
     pkgs.gnomeExtensions.tiling-assistant
+    pkgs.google-chrome
+    pkgs.firefox
+    pkgs.slack
+    pkgs.discord
+    pkgs.mailspring
+    pkgs.zoom-us
+    pkgs.dropbox
   ];
   # raw-nix passthrough
-  # Zen 5 (Strix / Krackan Point) needs a recent kernel; the LTS series
-  # lacks the platform patches for stability, power and performance.
-  boot.kernelPackages = pkgs.linuxPackages_latest;
+  # Normally set by hardware-configuration.nix, which this repo does without.
+  # Without it there is no wifi or GPU firmware and no microcode.
+  hardware.enableRedistributableFirmware = true;
 
-  fonts.packages = with pkgs; [ nerd-fonts.jetbrains-mono ];
+  # Format-time only: nixos-anywhere uploads the passphrase here (mise run install).
+  disko.devices.disk.main.content.partitions.crypt.content.passwordFile = "/tmp/secret.key";
+
+  fonts.packages = with pkgs; [
+    nerd-fonts.jetbrains-mono
+    maple-mono.NF # wezterm's font
+  ];
+
+  programs._1password.enable = true;
+  programs._1password-gui = {
+    enable = true;
+    polkitPolicyOwners = [ "wes" ];
+  };
+
+  # Yubikey: smartcard daemon for gpg-agent, and udev rules for the device.
+  services.pcscd.enable = true;
+  services.udev.packages = [ pkgs.yubikey-personalization ];
 
   virtualisation.libvirtd.enable = true;
   virtualisation.podman = {

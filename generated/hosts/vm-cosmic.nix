@@ -11,12 +11,13 @@
   nixpkgs.hostPlatform = "x86_64-linux";
   networking.hostName = "vm-cosmic";
   system.stateVersion = "26.05";
+  boot.loader.systemd-boot.enable = true;
+  time.timeZone = "Europe/London";
+  i18n.defaultLocale = "en_GB.UTF-8";
   nix.settings.experimental-features = [
     "nix-command"
     "flakes"
   ];
-  time.timeZone = "Europe/London";
-  i18n.defaultLocale = "en_GB.UTF-8";
   services.xserver.xkb.layout = "gb";
   console.useXkbConfig = true;
   nixpkgs.config.allowUnfree = true;
@@ -24,7 +25,6 @@
   services.pipewire.enable = true;
   services.pipewire.alsa.enable = true;
   services.pipewire.pulse.enable = true;
-  boot.loader.systemd-boot.enable = true;
   services.displayManager.cosmic-greeter.enable = true;
   services.desktopManager.cosmic.enable = true;
   services.displayManager.autoLogin.enable = true;

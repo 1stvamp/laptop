@@ -1,0 +1,139 @@
+#!/usr/bin/env bash
+# Frees disk when / runs low: unused Docker build cache and dangling images,
+# then Rust target dirs under ~/projects that no running build is using.
+# Run by the disk-janitor.timer user unit. DISK_JANITOR_DRY_RUN=1 only reports.
+set -euo pipefail
+
+MIN_FREE_GB=${DISK_JANITOR_MIN_FREE_GB:-40}
+TARGET_FREE_GB=${DISK_JANITOR_TARGET_FREE_GB:-80}
+ROOTS=${DISK_JANITOR_ROOTS:-$HOME/projects}
+DRY=${DISK_JANITOR_DRY_RUN:-0}
+
+free_gb() { df -BG --output=avail / | tail -1 | tr -dc '0-9'; }
+log() { echo "disk-janitor: $*"; }
+run() { if [ "$DRY" = 1 ]; then log "would run: $*"; else "$@"; fi; }
+
+free=$(free_gb)
+if [ "$free" -ge "$MIN_FREE_GB" ]; then
+  exit 0
+fi
+log "${free}G free, under ${MIN_FREE_GB}G; cleaning toward ${TARGET_FREE_GB}G"
+
+# Docker: only cache and images no container uses. Tagged images stay.
+if command -v docker >/dev/null && docker info >/dev/null 2>&1; then
+  run docker builder prune -af >/dev/null
+  run docker buildx prune -af >/dev/null 2>&1 || true
+  run docker image prune -f >/dev/null
+  log "docker pruned, ${free}G -> $(free_gb)G free"
+fi
+[ "$(free_gb)" -ge "$TARGET_FREE_GB" ] && exit 0
+
+# /tmp entries of ours untouched for TMP_IDLE_MIN and held open by no process.
+# Claude session dirs are judged one session at a time, not as a whole.
+TMP_IDLE_MIN=${DISK_JANITOR_TMP_IDLE_MIN:-1440}
+TARGET_IDLE_MIN=${DISK_JANITOR_TARGET_IDLE_MIN:-180}
+
+# Every path a process runs from, works in or holds open: a test binary
+# running out of a target dir counts, whoever started it.
+snapshot_open_paths() {
+  for p in /proc/[0-9]*; do
+    readlink "$p/exe" 2>/dev/null
+    readlink "$p/cwd" 2>/dev/null
+    for fd in "$p"/fd/*; do readlink "$fd" 2>/dev/null; done
+  done | sort -u || true
+}
+open_paths=$(snapshot_open_paths)
+
+held_open() {
+  awk -v p="$1" '$0 == p || index($0, p "/") == 1 { found = 1; exit } END { exit !found }' <<<"$open_paths"
+}
+
+TMP_ROOTS=${DISK_JANITOR_TMP_ROOTS:-/tmp $HOME/projects/tmp}
+tmp_entries() {
+  local root
+  for root in $TMP_ROOTS; do
+    [ -d "$root" ] || continue
+    find "$root" -mindepth 1 -maxdepth 1 -user "$(id -u)" ! -name "claude-$(id -u)" -print
+    find "$root/claude-$(id -u)" -mindepth 2 -maxdepth 2 -user "$(id -u)" -print 2>/dev/null
+  done
+}
+
+while IFS= read -r entry; do
+  [ "$(free_gb)" -ge "$TARGET_FREE_GB" ] && break
+  [ -e "$entry" ] || continue
+  # Anything inside written recently means the entry is still live.
+  [ -n "$(find "$entry" -xdev -mmin -"$TMP_IDLE_MIN" -print -quit 2>/dev/null)" ] && continue
+  if held_open "$entry"; then
+    log "skipping $entry: held open"
+    continue
+  fi
+  run rm -rf -- "$entry"
+done < <(tmp_entries)
+log "tmp cleaned, now $(free_gb)G free"
+[ "$(free_gb)" -ge "$TARGET_FREE_GB" ] && exit 0
+
+# A target dir is in use while a cargo or rustc process runs from inside its
+# project, or writes to it through CARGO_TARGET_DIR.
+busy_paths() {
+  for pid in $(pgrep -x 'cargo|rustc|cargo-clippy|clippy-driver' 2>/dev/null); do
+    readlink "/proc/$pid/cwd" 2>/dev/null || true
+    tr '\0' '\n' <"/proc/$pid/environ" 2>/dev/null | sed -n 's/^CARGO_TARGET_DIR=//p' || true
+  done
+}
+busy=$(busy_paths | sort -u)
+open_paths=$(snapshot_open_paths)
+
+in_use() {
+  local target=$1 project=${1%/target}
+  held_open "$target" && return 0
+  while IFS= read -r p; do
+    [ -z "$p" ] && continue
+    case "$p" in "$project"|"$project"/*|"$target"|"$target"/*) return 0 ;; esac
+  done <<<"$busy"
+  return 1
+}
+
+# Target dirs: one under a project, beside its Cargo.toml, or a CARGO_TARGET_DIR
+# a Claude session keeps in its scratchpad, which has no Cargo.toml beside it.
+target_dirs() {
+  local dir tag
+  while IFS= read -r -d '' dir; do
+    # Cargo tags a target dir it creates, but not one rust-analyzer made first;
+    # .rustc_info.json is there either way. The Cargo.toml beside it rules out
+    # a source module or a Java build that happens to be called target.
+    [ -f "$dir/CACHEDIR.TAG" ] || [ -f "$dir/.rustc_info.json" ] || continue
+    [ -f "${dir%/target}/Cargo.toml" ] || continue
+    printf '%s\0' "$dir"
+  done < <(find $ROOTS -xdev -type d -name target -prune -print0 2>/dev/null)
+  while IFS= read -r -d '' tag; do
+    dir=${tag%/CACHEDIR.TAG}
+    [ -d "$dir/debug" ] || [ -d "$dir/release" ] || [ -f "$dir/.rustc_info.json" ] || continue
+    printf '%s\0' "$dir"
+  done < <(find "/tmp/claude-$(id -u)" -xdev -mindepth 5 -type f -name CACHEDIR.TAG \
+    -path '*/scratchpad/*' -print0 2>/dev/null)
+}
+
+# Drops a target dir nested in another (a build script's own, like hegeltest's),
+# so it is judged with its parent and never removed from under one in use.
+outermost() {
+  sort -z | awk 'BEGIN { RS = ORS = "\0" } kept == "" || index($0, kept "/") != 1 { print; kept = $0 }'
+}
+
+# Largest first, so the target is reached with the fewest rebuilds.
+while IFS=$'\t' read -r _ dir; do
+  [ "$(free_gb)" -ge "$TARGET_FREE_GB" ] && break
+  # An agent builds, edits, then builds again, so no cargo process runs most
+  # of the time; a target written recently is still being iterated on.
+  if [ -n "$(find "$dir" -xdev -maxdepth 3 -mmin -"$TARGET_IDLE_MIN" -print -quit 2>/dev/null)" ]; then
+    log "skipping $dir: written in the last ${TARGET_IDLE_MIN} min"
+    continue
+  fi
+  if in_use "$dir"; then
+    log "skipping $dir: in use"
+    continue
+  fi
+  run rm -rf -- "$dir"
+  [ "$DRY" = 1 ] || log "removed $dir, now $(free_gb)G free"
+done < <(target_dirs | outermost | xargs -0r du -s --block-size=1G 2>/dev/null | sort -rn)
+
+log "done: $(free_gb)G free"

@@ -25,7 +25,7 @@
         "fw13" = nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
           modules = [
-            inputs."nixos-hardware".nixosModules."framework-amd-ai-300-series"
+            inputs."nixos-hardware".nixosModules."framework-intel-core-ultra-series3"
             inputs."disko".nixosModules."disko"
             inputs."home-manager".nixosModules."home-manager"
             ./hosts/fw13.nix

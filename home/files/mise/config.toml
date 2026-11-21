@@ -1,0 +1,24 @@
+[tools]
+pnpm = "latest"
+npm = "latest"
+node = "latest"
+"github:wimpysworld/tailor" = "latest"
+zig = "0.15"
+"github:systeminit/swamp" = "latest"
+"github:dciobanu/eero-cli" = "latest"
+gum = "latest"
+awscli = "latest"
+"github:asciinema/agg" = "latest"
+chezmoi = "2.71.0"
+"aqua:prometheus/prometheus" = "3.13.0"
+java = "temurin-21"
+gradle = "8.14"
+rust = "1.97.0"
+trivy = "0.74.0"
+"github:google/copybara" = "v20260727"
+helm = "latest"
+"http:but" = { version = "0.22.3", url = "https://releases.gitbutler.com/releases/release/0.22.3-3234/linux/x86_64/but", bin = "but" }
+sccache = "0.19.0"
+
+[settings]
+idiomatic_version_file_enable_tools = ["node"]

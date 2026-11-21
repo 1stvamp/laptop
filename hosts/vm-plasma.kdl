@@ -3,16 +3,20 @@ host "vm-plasma" {
     system "x86_64-linux"
     nixpkgs release="26.05"
 
-    base "26.05" {
+    os {
+        state-version "26.05"
         timezone "Europe/London"
         locale "en_GB.UTF-8"
+        boot-loader "systemd-boot"
+        experimental-feature "nix-command"
+        experimental-feature "flakes"
+    }
+
+    base {
         keymap "gb"
-        nix-feature "nix-command"
-        nix-feature "flakes"
         allow-unfree
         networkmanager
         pipewire
-        systemd-boot
     }
 
     desktop {

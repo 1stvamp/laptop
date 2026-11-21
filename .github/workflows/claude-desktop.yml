@@ -1,0 +1,76 @@
+# Daily check of Anthropic's apt repo for a new claude-desktop. On a new version it
+# builds the package and opens (or refreshes) a PR bumping pkgs/claude-desktop/sources.json.
+name: claude-desktop
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: claude-desktop
+  cancel-in-progress: true
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      BRANCH: chore/bump-claude-desktop
+    # Pinned by SHA, and the token reaches only the last step: this job can push.
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Look for a new version
+        id: update
+        run: |
+          set -euo pipefail
+          old="$(jq -r .version pkgs/claude-desktop/sources.json)"
+          pkgs/claude-desktop/update.sh
+          new="$(jq -r .version pkgs/claude-desktop/sources.json)"
+          echo "old=$old" >> "$GITHUB_OUTPUT"
+          echo "new=$new" >> "$GITHUB_OUTPUT"
+          if git diff --quiet -- pkgs/claude-desktop/sources.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: cachix/install-nix-action@3dc140bfc76c49fbd4dd958429132e3746bcb086 # v31
+        if: steps.update.outputs.changed == 'true'
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      # A PR opened with GITHUB_TOKEN doesn't trigger check.yml, so prove the build here.
+      - name: Build the new package
+        if: steps.update.outputs.changed == 'true'
+        run: nix build --no-link --print-build-logs './generated#nixosConfigurations.fw13.pkgs.claude-desktop'
+
+      - name: Open or refresh the PR
+        if: steps.update.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OLD: ${{ steps.update.outputs.old }}
+          NEW: ${{ steps.update.outputs.new }}
+        run: |
+          set -euo pipefail
+          title="chore(claude-desktop): bump $OLD to $NEW"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          gh auth setup-git
+          git switch -C "$BRANCH"
+          git commit -m "$title" -- pkgs/claude-desktop/sources.json
+          git push --force origin "$BRANCH"
+          body="New claude-desktop from Anthropic's apt repo, with the signature on its index checked against \`pkgs/claude-desktop/archive-keyring.asc\`. The package built in this workflow run; it hasn't been launched."
+          if [ "$(gh pr view "$BRANCH" --json state --jq .state 2>/dev/null)" = "OPEN" ]; then
+            gh pr edit "$BRANCH" --title "$title" --body "$body"
+          else
+            gh pr create --head "$BRANCH" --title "$title" --body "$body"
+          fi

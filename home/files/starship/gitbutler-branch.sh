@@ -1,0 +1,199 @@
+#!/usr/bin/env bash
+# starship GitButler-aware branch segment. Always exits 0.
+
+BUTLER_SYMBOL="⧓"
+GIT_SYMBOL="🌿"
+# Shown in place of the stack list when `but` couldn't be read. Distinct from
+# "workspace", which is a real answer: a managed repo with nothing applied.
+ERROR_TEXT="?"
+
+# Colour codes. Empty by default so sourced tests see plain text; main() fills
+# them in for the live prompt (see setup_colors).
+SYM_COLOR=""
+TEXT_COLOR=""
+RESET=""
+
+# Reads `but status --json` on stdin, prints the butler segment: a coloured ⧓
+# followed by the applied stacks. $1 is but's exit status, assumed 0 when
+# omitted. A non-zero status or json jq can't parse renders ERROR_TEXT; only a
+# clean read with nothing applied renders "workspace".
+render_butler() {
+  local status="${1:-0}" out rc
+  out="$(jq -r '
+    [ .stacks[]? | .branches[]? | select(.name != null)
+      | .name + (if (.commits|length) > 0
+                 then " ↑" + (.commits|length|tostring)
+                 else "" end)
+    ] | join(" | ")
+  ' 2>/dev/null)"
+  rc=$?
+  if [ "$status" -ne 0 ] || [ "$rc" -ne 0 ]; then
+    out="$ERROR_TEXT"
+  elif [ -z "$out" ]; then
+    out="workspace"
+  fi
+  printf '%s%s%s %s%s%s' "$SYM_COLOR" "$BUTLER_SYMBOL" "$RESET" "$TEXT_COLOR" "$out" "$RESET"
+}
+
+# Prints the gitbutler data dir for the current repo if present, else nothing.
+gitbutler_dir() {
+  local d
+  d="$(git rev-parse --git-path gitbutler 2>/dev/null)" || return 0
+  [ -d "$d" ] || return 0
+  ( cd "$d" && pwd )
+}
+
+# True when GitButler has taken over the checkout, i.e. HEAD is parked on one of
+# its workspace branches. That's `but`'s own precondition: off such a branch it
+# refuses to report ("Not currently on a gitbutler/* branch"), so a leftover
+# data dir from a repo the app merely opened once doesn't count as managed.
+in_butler_workspace() {
+  case "$(git symbolic-ref --quiet HEAD 2>/dev/null)" in
+    refs/heads/gitbutler/*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Prints `🌿 <branch>` for a plain git repo (short sha when detached).
+render_git() {
+  local name
+  name="$(git branch --show-current 2>/dev/null)"
+  [ -z "$name" ] && name="$(git rev-parse --short HEAD 2>/dev/null)"
+  [ -z "$name" ] && return 0
+  printf '%s%s %s%s' "$TEXT_COLOR" "$GIT_SYMBOL" "$name" "$RESET"
+}
+
+# Queries the terminal background via OSC 11 and prints "dark" or "light" based
+# on its luminance. Prints nothing if the terminal doesn't answer. Reads/writes
+# the controlling terminal directly so it never touches the captured stdout.
+query_bg_mode() {
+  [ -e /dev/tty ] || return 0
+  local old resp hex r g b lum
+  old="$(stty -g < /dev/tty 2>/dev/null)" || return 0
+  stty raw -echo < /dev/tty 2>/dev/null
+  printf '\e]11;?\a' > /dev/tty 2>/dev/null
+  IFS= read -r -d '' -t 0.1 resp < /dev/tty 2>/dev/null
+  stty "$old" < /dev/tty 2>/dev/null
+  case "$resp" in
+    *rgb:*) ;;
+    *) return 0 ;;
+  esac
+  hex="${resp#*rgb:}"
+  r="${hex%%/*}"; hex="${hex#*/}"
+  g="${hex%%/*}"; hex="${hex#*/}"
+  b="${hex%%[!0-9a-fA-F]*}"
+  r=$((16#${r:-0})); g=$((16#${g:-0})); b=$((16#${b:-0}))
+  [ "$r" -gt 255 ] && r=$((r>>8))
+  [ "$g" -gt 255 ] && g=$((g>>8))
+  [ "$b" -gt 255 ] && b=$((b>>8))
+  lum=$(( (r*299 + g*587 + b*114) / 1000 ))
+  if [ "$lum" -lt 128 ]; then printf 'dark'; else printf 'light'; fi
+}
+
+# Resolves the terminal background mode, cached per-tty for the session. An
+# explicit GITBUTLER_PROMPT_MODE (light|dark) wins and skips the query.
+detect_bg_mode() {
+  case "${GITBUTLER_PROMPT_MODE:-}" in
+    light|dark) printf '%s' "$GITBUTLER_PROMPT_MODE"; return 0 ;;
+  esac
+  local root tty_id cache mode
+  root="${XDG_CACHE_HOME:-$HOME/.cache}/starship-gitbutler"
+  tty_id="$(ps -o tty= -p $$ 2>/dev/null | tr -d ' /')"
+  [ -z "$tty_id" ] && tty_id="unknown"
+  cache="$root/mode-$tty_id"
+  if { IFS= read -r mode < "$cache"; } 2>/dev/null && [ -n "$mode" ]; then
+    printf '%s' "$mode"; return 0
+  fi
+  mode="$(query_bg_mode)"
+  [ -z "$mode" ] && mode="dark"
+  { mkdir -p "$root" && printf '%s' "$mode" > "$cache"; } 2>/dev/null
+  printf '%s' "$mode"
+}
+
+# Fills the colour globals: grey text, and a blue ⧓ that is light on a dark
+# background and dark on a light one.
+setup_colors() {
+  RESET=$'\e[0m'
+  TEXT_COLOR=$'\e[38;5;246m'
+  case "$(detect_bg_mode)" in
+    light) SYM_COLOR=$'\e[38;2;29;78;216m' ;;
+    *)     SYM_COLOR=$'\e[38;2;96;165;250m' ;;
+  esac
+}
+
+# Runs `but status --json`, bounded by a timeout so a hung `but` can't
+# stall the prompt. Override this function in tests to stub `but`.
+but_status_json() {
+  if command -v timeout >/dev/null 2>&1; then
+    timeout "${BUT_TIMEOUT:-2}" but status --json
+  else
+    but status --json
+  fi
+}
+
+# True when a cached entry stamped $1 is still good. With a REFRESH mtime ($2)
+# the stamp must match it exactly; without one there's nothing to invalidate on,
+# so the stamp is a write time ($3 is now) and expires after BUT_CACHE_TTL.
+cache_fresh() {
+  local cached="$1" mtime="$2" now="$3" age
+  case "$cached" in ''|*[!0-9]*) return 1 ;; esac
+  if [ -n "$mtime" ]; then
+    [ "$cached" = "$mtime" ]
+  else
+    [ -n "$now" ] || return 1
+    age=$((now - cached))
+    [ "$age" -ge 0 ] && [ "$age" -lt "${BUT_CACHE_TTL:-5}" ]
+  fi
+}
+
+# Prints the butler segment for the given gitbutler dir, caching on REFRESH
+# mtime, or on a TTL when the repo has no REFRESH file.
+cached_butler() {
+  local gbdir="$1"
+  local refresh="$gbdir/REFRESH"
+  local mtime now cache_root key cache_file cached_stamp cached_val val
+
+  # GNU coreutils uses `stat -c %Y`; BSD/macOS uses `stat -f %m`.
+  mtime="$(stat -c %Y "$refresh" 2>/dev/null || stat -f %m "$refresh" 2>/dev/null)"
+  now="$(date +%s 2>/dev/null)"
+  cache_root="${XDG_CACHE_HOME:-$HOME/.cache}/starship-gitbutler"
+  key="$(printf '%s' "$gbdir" | cksum | cut -d' ' -f1)"
+  cache_file="$cache_root/$key"
+
+  if { IFS= read -r cached_stamp < "$cache_file"; } 2>/dev/null; then
+    if cache_fresh "$cached_stamp" "$mtime" "$now"; then
+      cached_val="$(sed '1d' "$cache_file" 2>/dev/null)"
+      printf '%s' "$cached_val"
+      return 0
+    fi
+  fi
+
+  local json rc
+  json="$(but_status_json 2>/dev/null)"
+  rc=$?
+  val="$(printf '%s' "$json" | render_butler "$rc")"
+
+  # A failed read isn't cached: keyed on REFRESH it would stick until the
+  # workspace next changed, long outliving whatever broke `but`.
+  if [ "$rc" -eq 0 ] && [ -n "${mtime:-$now}" ]; then
+    { mkdir -p "$cache_root" && printf '%s\n%s' "${mtime:-$now}" "$val" > "$cache_file"; } 2>/dev/null
+  fi
+  printf '%s' "$val"
+}
+
+main() {
+  git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
+  setup_colors
+  local gb
+  gb="$(gitbutler_dir)"
+  if [ -n "$gb" ] && in_butler_workspace; then
+    cached_butler "$gb"
+  else
+    render_git
+  fi
+}
+
+# Run main only when executed directly, not when sourced by tests.
+if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
+  main
+fi

@@ -1,46 +1,26 @@
-// Host files can't include each other, so this holds what every host repeats.
+// Host files can't include each other, so this holds what every host repeats that the
+// built-in os node doesn't cover (state version, timezone, locale, bootloader and nix
+// features live in os).
 
-module name="base" version="1.0.0" {
-    summary "Base system settings: locale, keyboard, networking, audio, power, bootloader."
+module name="base" version="2.0.0" {
+    summary "Base system settings: keyboard, unfree, networking, audio, power, firmware, printing."
     claims-node "base"
 
     schema {
-        arg "state-version" type="string" required=#true \
-            doc="NixOS release for system.stateVersion, e.g. 26.05. Set once and leave it."
-        child "timezone" repeated=#true doc="tzdata name, e.g. Europe/London. At most one." {
-            arg "tz" type="string" required=#true
-        }
-        child "locale" repeated=#true doc="Default locale, e.g. en_GB.UTF-8. At most one." {
-            arg "value" type="string" required=#true
-        }
         child "keymap" repeated=#true \
             doc="Keyboard layout, applied to both the console and X/Wayland. At most one." {
             arg "layout" type="string" required=#true
         }
-        child "nix-feature" type="string" repeated=#true \
-            doc="An experimental Nix feature, e.g. nix-command, flakes."
         child "allow-unfree" type="bool" doc="Allow unfree packages in nixpkgs."
         child "networkmanager" type="bool" doc="NetworkManager for wifi and wired."
         child "pipewire" type="bool" doc="PipeWire with ALSA and PulseAudio compatibility."
         child "power-profiles" type="bool" \
-            doc="power-profiles-daemon. Preferred over TLP on the AMD Framework."
+            doc="power-profiles-daemon rather than TLP."
         child "fwupd" type="bool" doc="fwupd, for BIOS and firmware updates via fwupdmgr."
         child "printing" type="bool" doc="CUPS."
-        child "systemd-boot" type="bool" doc="systemd-boot rather than GRUB."
-        child "efi-vars" type="bool" \
-            doc="Let the installer touch EFI variables. True on real hardware, false in a VM."
     }
 
     emit {
-        set "system.stateVersion" "{state-version}"
-        set "nix.settings.experimental-features" (collect-opt)"nix-feature"
-
-        for-each "t" in "timezone" {
-            set "time.timeZone" "{t.tz}"
-        }
-        for-each "l" in "locale" {
-            set "i18n.defaultLocale" "{l.value}"
-        }
         for-each "k" in "keymap" {
             // kbd and XKB name layouts differently (uk vs gb), so derive the console one.
             set "services.xserver.xkb.layout" "{k.layout}"
@@ -66,12 +46,6 @@ module name="base" version="1.0.0" {
         }
         when-flag "printing" {
             set "services.printing.enable" #true
-        }
-        when-flag "systemd-boot" {
-            set "boot.loader.systemd-boot.enable" #true
-        }
-        when-flag "efi-vars" {
-            set "boot.loader.efi.canTouchEfiVariables" #true
         }
     }
 }

@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Poll the pnpm-deps marker for one or more repos. Runs as a systemd --user
+# service. The underlying check (pnpm-deps-marker) is a cheap mtime compare, so
+# a few-second poll is negligible and reliably catches lockfile changes from any
+# source (GitButler apply/pull, git, manual edits) plus pnpm install clearing it.
+#
+# Usage: pnpm-deps-watch [repo-dir ...]   (default: trigger.dev)
+set -u
+
+interval="${PNPM_DEPS_WATCH_INTERVAL:-4}"
+marker_cmd="/home/wes/bin/pnpm-deps-marker"
+
+repos=("$@")
+if [ "${#repos[@]}" -eq 0 ]; then
+  repos=("/home/wes/projects/trigger/trigger.dev")
+fi
+
+while :; do
+  for r in "${repos[@]}"; do
+    "$marker_cmd" "$r" 2>/dev/null || true
+  done
+  sleep "$interval"
+done

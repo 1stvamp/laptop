@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# Maintain a ".pnpm-install-needed" marker at a pnpm repo root:
+#   - present  => node_modules is out of sync with pnpm-lock.yaml (run pnpm install)
+#   - absent   => in sync
+#
+# Detection is a content-hash comparison. pnpm keeps a copy of the lockfile it
+# last installed from at node_modules/.pnpm/lock.yaml, so we sha256 that against
+# the working pnpm-lock.yaml. Unlike an mtime check this is immune to
+# same-content rewrites (e.g. a GitButler/git checkout that bumps the lockfile's
+# mtime without changing any dependency). Idempotent; safe to call often.
+#
+# Usage: pnpm-deps-marker [repo-dir]     (default: git toplevel of cwd)
+set -euo pipefail
+
+repo="${1:-$(git -C "$(pwd)" rev-parse --show-toplevel 2>/dev/null || pwd)}"
+lock="$repo/pnpm-lock.yaml"
+ref="$repo/node_modules/.pnpm/lock.yaml"   # pnpm's copy of the installed lockfile
+mod="$repo/node_modules/.modules.yaml"     # fallback signal if ref is absent
+
+[ -f "$lock" ] || exit 0   # not a pnpm repo — nothing to track
+
+# The marker is read by the starship prompt, which tests for it at the git
+# toplevel. When the pnpm root is a subdirectory of the repo (a monorepo whose
+# app tree is nested) those are different directories, so anchor the marker at
+# the toplevel rather than beside the lockfile. Identical for a plain checkout,
+# where the two are the same path. Falls back to the pnpm root outside git.
+anchor="$(git -C "$repo" rev-parse --show-toplevel 2>/dev/null || echo "$repo")"
+marker="$anchor/.pnpm-install-needed"
+
+# Keep the marker out of git without touching tracked files or global config.
+excl="$anchor/.git/info/exclude"
+if [ -f "$excl" ] && ! grep -qxF '.pnpm-install-needed' "$excl"; then
+  printf '.pnpm-install-needed\n' >> "$excl"
+fi
+
+stale=1
+if [ -f "$ref" ]; then
+  # Primary: does the working lockfile match the one node_modules was built from?
+  if [ "$(sha256sum "$lock" | cut -d' ' -f1)" = "$(sha256sum "$ref" | cut -d' ' -f1)" ]; then
+    stale=0
+  fi
+elif [ -e "$mod" ]; then
+  # Fallback for layouts without .pnpm/lock.yaml: coarse mtime comparison.
+  [ "$lock" -nt "$mod" ] || stale=0
+fi
+
+if [ "$stale" -eq 1 ]; then
+  touch "$marker"      # out of sync -> flag it
+else
+  rm -f "$marker"      # in sync -> clear it
+fi

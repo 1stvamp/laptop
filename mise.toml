@@ -33,3 +33,28 @@ disk_dir="$(mktemp -d)"
 trap 'rm -rf "$disk_dir"' EXIT
 NIX_DISK_IMAGE="$disk_dir/${host}.qcow2" "./result-${host}/bin/run-${host}-vm"
 '''
+
+# nixos-anywhere onto the laptop booted from the stock NixOS installer: run `passwd`
+# there first, and use its address. Wipes /dev/nvme0n1.
+[tasks.install]
+description = "Install fw13 onto a machine booted from the NixOS installer (wipes the disk)"
+usage = '''
+arg "<address>" help="The installer's IP address or hostname"
+'''
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+target="nixos@${usage_address?}"
+knixl check
+read -rsp "LUKS passphrase: " pass; echo
+read -rsp "Again: " again; echo
+[ "$pass" = "$again" ] || { echo "passphrases differ" >&2; exit 1; }
+# disko reads the passphrase from /tmp/secret.key at format time (fw13.kdl raw-nix).
+nix run github:nix-community/nixos-anywhere -- \
+  --flake ./generated#fw13 \
+  --disk-encryption-keys /tmp/secret.key <(printf '%s' "$pass") \
+  --phases kexec,disko,install "$target"
+# Nothing in the config sets wes's password, so set it before the first boot.
+ssh -t "$target" sudo nixos-enter --root /mnt -c 'passwd wes'
+echo "Installed. Pull the USB stick, then: ssh $target sudo reboot"
+'''

@@ -1,18 +1,22 @@
 # laptop
 
-A knixl project: swappable-desktop NixOS for the Framework 13 (AMD Ryzen AI 300),
-testable in a VM first. KDL is the source of truth, and everything under
+A knixl project: swappable-desktop NixOS for the Framework Laptop 13 Pro (Intel Core
+Ultra Series 3, Panther Lake), testable in a VM first. KDL is the source of truth, and everything under
 `generated/` (the flake included) is knixl output.
 
 ```
 knixl.kdl              project: flake inputs, and the disko/home-manager modules
 knixl.lock.kdl         knixl's lock: tool, modules, nixpkgs baseline, input revs
-mise.toml              the knixl version, and the vm tasks
+mise.toml              the knixl version, the vm tasks and the install task
 hosts/fw13.kdl         the laptop
 hosts/vm-{gnome,plasma,cosmic}.kdl   one throwaway VM per desktop
-modules/base/          local module: locale, audio, power, bootloader
+modules/base/          local module: keyboard, networking, audio, power, firmware, printing
 modules/desktop/       local module: the DE selector
 modules/vm-guest/      local module: QEMU guest agents, build-vm sizing, a VM password
+home/default.nix       wes's login shell (zsh), and the import of home/wes.nix
+home/wes.nix           home-manager config: zsh, git, gpg-agent, Vicinae, dconf, packages
+home/files/            dotfiles: ~/bin, nvim-ai, wezterm, starship, mise
+pkgs/claude-desktop/   Claude desktop from Anthropic's .deb, and its bump script
 generated/             knixl output (flake.nix, hosts/*.nix), never hand-edited
 generated/flake.lock   nix's lock, derived from knixl.lock.kdl, commit it
 ```
@@ -33,6 +37,16 @@ Each `oracle-modules` entry does two jobs: the oracle validates option paths
 against that module, and each host's `nixosSystem` imports it. fw13 has its own
 `oracle-modules` block to add the nixos-hardware profile, and because a host block
 replaces the project set it repeats disko and home-manager.
+
+The profile is `framework-intel-core-ultra-series3`, which is what nixos-hardware
+calls the 13 Pro (its README links `frame.work/laptop13pro`). It is thin: fwupd, a
+6.17 kernel floor, fingerprint, the Intel bits from `common/cpu/intel`, and touchscreen
+modules in the initrd when unl0kr is on. It does not turn on
+`hardware.enableRedistributableFirmware`, which would normally come from
+`hardware-configuration.nix`, so fw13 sets it in `raw-nix` (without it there's no
+wifi or GPU firmware and no microcode). The 13-inch common module also pulls in
+the classic chassis speaker tuning; it's off by default and not tuned for the Pro,
+so leave `hardware.framework.laptop13.audioEnhancement` alone.
 
 **Note**: the project set applies to every host, so the VMs import the disko and
 home-manager modules too. Both are inert without config.
@@ -62,6 +76,60 @@ desktop {
 then `knixl generate && nixos-rebuild switch --flake ./generated#fw13`. On the
 metal you can also skip the regenerate cycle: fw13's `raw-nix` carries a
 `specialisation.plasma`, so Plasma is a boot menu entry alongside the default.
+
+## Home
+
+knixl's `home-manager` node can set session variables and enable programs, and
+that's all, so fw13 lists the programs there and everything else lives in
+`home/wes.nix`: their settings, `home.packages`, dconf, the user services, and the
+files. It comes in through fw13's `import "../home"` node.
+
+The files under `home/files/` are linked into place as out-of-store symlinks
+(`~/bin`, `~/.config/nvim-ai`, wezterm, starship, mise), the way the Dropbox links
+worked, so editing them in place works without a rebuild. That only holds while
+the repo is checked out at `~/projects/laptop`.
+
+**Note**: secrets stay out of git. Copy them across once: `~/.secrets.zsh` (sourced
+by zsh if it exists) for the tokens, plus `~/.ssh`, `~/.gnupg`, `~/.aws`, `~/.kube`,
+`~/.config/gh/hosts.yml` and so on. `~/.claude` is left out as well, since parts
+of it name private repos and this repo is public.
+
+## Claude desktop
+
+nixpkgs doesn't package it, so `pkgs/claude-desktop/` repackages Anthropic's
+official `.deb` (adapted from kubastick/claude-desktop-nixos, MIT), plus the nix-ld
+and KVM setup its Code and Cowork tabs need. `update.sh` points `sources.json` at
+the newest version in Anthropic's apt repo, after checking the repo's signed index
+against `archive-keyring.asc`. `.github/workflows/claude-desktop.yml` runs it daily
+and opens a PR when the version moves.
+
+**Note**: the workflow needs "Allow GitHub Actions to create and approve pull
+requests" turned on in the repo settings. Its PRs don't trigger `check.yml`, so it
+builds the package itself.
+
+ChatGPT is in nixpkgs-unstable, and comes in from there once knixl 1.7.0 can take
+packages from a second nixpkgs.
+
+## Installing
+
+Boot the laptop from the stock NixOS installer, run `passwd` there (it sets the
+`nixos` user's password, which the installer's sshd needs), and find its address
+with `ip addr`. Then, from a machine with this repo:
+
+```sh
+mise run install <address>
+```
+
+That runs `knixl check`, asks for the LUKS passphrase twice, and runs nixos-anywhere
+against `./generated#fw13` (disko partitions and formats `/dev/nvme0n1`, then the
+install). The passphrase is uploaded to `/tmp/secret.key` on the installer, which is
+where disko reads it at format time. Last it asks for `wes`'s password, set with
+`nixos-enter` on the new system, since nothing in the config sets one.
+
+**Note**: this wipes `/dev/nvme0n1`.
+
+It stops short of rebooting, so pull the stick first, then `ssh nixos@<address> sudo
+reboot`.
 
 ## Loop
 
@@ -97,24 +165,36 @@ Worth filing against knixl itself rather than working around forever:
 2. **No desktop module in the stdlib.** Hence `modules/desktop/`. It is ~40 lines of
    plain bool sets and needs no Rust, so it is a reasonable stdlib candidate.
 3. **`set` cannot emit package references.** `fonts.packages` needs a `pkgs.*`
-   value, so it sits in `raw-nix`. `boot.kernelPackages` is there too, though it
-   could now move to the built-in `os` module's `kernel-package` child.
+   value, so it sits in `raw-nix`. (`boot.kernelPackages` moved to the `os` node.)
 4. **No mutual exclusion in schemas.** Nothing stops `desktop { gnome; plasma }`,
    and knixl generates it happily; you only find out from the NixOS eval conflict.
    A `one-of` schema constraint would catch it at generate time.
 5. **No cross-host sharing.** Host files are standalone, which is why `base` exists
-   as a module, and the four hosts still repeat the same `base` block body. The
-   built-in `os` module now covers state version, timezone, locale, systemd-boot,
-   EFI variables and nix experimental features, so `base` could shrink to the rest
-   (keymap, unfree, networkmanager, pipewire, power, fwupd, printing).
+   as a module, and the four hosts still repeat the same `os` and `base` blocks.
+   `base` now only carries what `os` doesn't (keymap, unfree, networkmanager,
+   pipewire, power, fwupd, printing).
 6. **home-manager interiors are unchecked.** Since knixl 1.5.0 the oracle lets
    anything under `home-manager.users.<name>` through without checking it (before
    that it rejected all of it), because the NixOS options don't describe
    home-manager's per-user options.
+7. **The luks node has no `passwordFile`.** So the one disko option the install
+   needs is set in fw13's `raw-nix`, where the oracle can't check the path.
 
 ## Verification status
 
-Checked, with knixl 1.5.0. Later releases up to 1.6.0 left every system's
+Checked, with knixl 1.6.0, after the move to the 13 Pro profile and the `os` node:
+
+- `knixl check` is clean, and all four hosts evaluate.
+- claude-desktop 6.28899.2 builds and its binary reports its version (run on
+  Pop!_OS, not NixOS). `update.sh` refuses an index signed by any other key.
+- The three VMs' toplevel derivations are unchanged by moving `base` into `os`.
+- fw13 evaluates with firmware and Intel microcode on, nix-ld on, kernel 7.2.8,
+  and disko's `passwordFile` at `/tmp/secret.key`.
+
+`.github/workflows/check.yml` runs `knixl check` and evaluates every host on each
+push and pull request, and passed on the first PR.
+
+Checked earlier, with knixl 1.5.0. Later releases up to 1.6.0 left every system's
 toplevel derivation unchanged:
 
 - `knixl plan` and `knixl check` are clean.
@@ -133,6 +213,11 @@ Not checked:
 
 - The GNOME desktop in a real window, the plasma and cosmic VMs, or anything on
   the metal.
+- `mise run install`, end to end.
+- Claude desktop on NixOS: its window, the Code tab under nix-ld, and Cowork's VM.
+  `claude-desktop.yml` hasn't run either.
+- Anything in `home/`, beyond evaluating it: no session has run zsh, Vicinae or the
+  dconf settings yet.
 - `hardware-configuration.nix`. disko supplies the filesystems and nixos-hardware
   the platform bits, so the plan is to do without it, but `nixos-generate-config
   --no-filesystems` on the target is worth diffing against the evaluated config

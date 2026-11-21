@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# nvi: launch neovide under the nvim-ai config, fully detached from this shell.
+# stdin/stdout/stderr go to /dev/null so nohup writes no nohup.out log.
+
+NVIM_APPNAME=nvim-ai nohup neovide "$@" </dev/null >/dev/null 2>&1 &
+disown

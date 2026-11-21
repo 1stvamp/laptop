@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+echo 'explain what this bash command line will do:' "$@" | claude --print --no-session-persistence --output-format text --tools '' --brief --model sonnet | lowdown -t term
