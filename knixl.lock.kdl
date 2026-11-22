@@ -1,16 +1,17 @@
 lock version=1 {
-    tool version="1.6.0"
+    tool version="1.7.0"
     formatter name="nixfmt-rfc-style" version="1.3.1"
     oracle nixpkgs-rev="" options-hash="" {
-        oracle-module name="disko" url="https://github.com/nix-community/disko" rev="725ea35e410ad83be4931d1bff7e090eacaf3563" attr="disko"
+        oracle-module name="disko" url="https://github.com/nix-community/disko" rev="44761d4f745b95e037458a0e57133c5700c8e320" attr="disko"
         oracle-module name="home-manager" url="https://github.com/nix-community/home-manager" rev="a6631107a83ceab5872f298a2ea710859c80c4cb" attr="home-manager"
     }
 
-    flake-input "disko" url="github:nix-community/disko" rev="725ea35e410ad83be4931d1bff7e090eacaf3563"
+    flake-input "disko" url="github:nix-community/disko" rev="44761d4f745b95e037458a0e57133c5700c8e320"
     flake-input "home-manager" url="github:nix-community/home-manager" rev="a6631107a83ceab5872f298a2ea710859c80c4cb"
-    flake-input "nixos-hardware" url="github:NixOS/nixos-hardware" rev="30d48a0ec6035f8140d0125af274f0de95f1e9b5"
+    flake-input "nixos-hardware" url="github:NixOS/nixos-hardware" rev="33475966110df258f52d05ec4d4cd6394637cbb9"
+    flake-input "nixpkgs-unstable" url="github:NixOS/nixpkgs" rev="2786a2a72088ecf32aea5b3ec52099e6a7cff78f"
 
-    input "hosts/fw13.kdl" hash="blake3:77a28d5a46d7fe8a7fbf395f3262dfc0101d94de52206844f548ebca41da81a3"
+    input "hosts/fw13.kdl" hash="blake3:7491408d73b2099b5c26f28cae0de6b05cf48f612f4b5a9cbed337e42b5e2ce4"
     input "hosts/vm-cosmic.kdl" hash="blake3:bc9ebd0f30b739d088de0f9fda3e685375e228fcddc8c84d28fba23e3d5da29c"
     input "hosts/vm-gnome.kdl" hash="blake3:2ab4c477323f1e273313843c7ed9934fc7ea496f4a55e35e5bbad6cf732c46f9"
     input "hosts/vm-plasma.kdl" hash="blake3:8332729169317b348821f57602db7b6aa6cdb3e56e03989cf7107330fa6ac313"
@@ -38,51 +39,51 @@ lock version=1 {
     module "zfs" version="1.0.0"
 
     host "fw13" {
-        baseline release="26.05" nixpkgs-rev="cf5e76507c6e23b59f7e0ffcc7baa2a39ddd8442" options-hash="blake3:1c9f63cd26f3bac12f12279ec42382e7e9396b7269e27d50bce6f7eddec599a2" {
-            oracle-module name="nixos-hardware" url="https://github.com/NixOS/nixos-hardware" rev="30d48a0ec6035f8140d0125af274f0de95f1e9b5" attr="framework-intel-core-ultra-series3"
-            oracle-module name="disko" url="https://github.com/nix-community/disko" rev="725ea35e410ad83be4931d1bff7e090eacaf3563" attr="disko"
+        baseline release="26.05" nixpkgs-rev="cf5e76507c6e23b59f7e0ffcc7baa2a39ddd8442" options-hash="blake3:520faaeee13214e380d15e4f29d329d9fb6879bf62fc513d8aec54335bbcf8f8" {
+            oracle-module name="nixos-hardware" url="https://github.com/NixOS/nixos-hardware" rev="33475966110df258f52d05ec4d4cd6394637cbb9" attr="framework-intel-core-ultra-series3"
+            oracle-module name="disko" url="https://github.com/nix-community/disko" rev="44761d4f745b95e037458a0e57133c5700c8e320" attr="disko"
             oracle-module name="home-manager" url="https://github.com/nix-community/home-manager" rev="a6631107a83ceab5872f298a2ea710859c80c4cb" attr="home-manager"
         }
     }
 
     host "vm-cosmic" {
-        baseline release="26.05" nixpkgs-rev="cf5e76507c6e23b59f7e0ffcc7baa2a39ddd8442" options-hash="blake3:2805e3faf56f70efda55813b734f8ae3fa8eb1f43d0315143e5d54eccd9db062"
+        baseline release="26.05" nixpkgs-rev="cf5e76507c6e23b59f7e0ffcc7baa2a39ddd8442" options-hash="blake3:674c56f2d8921cd7a661f8ad8350b0858a6f27eff7b821fc568bfd389a844d3b"
     }
 
     host "vm-gnome" {
-        baseline release="26.05" nixpkgs-rev="cf5e76507c6e23b59f7e0ffcc7baa2a39ddd8442" options-hash="blake3:2805e3faf56f70efda55813b734f8ae3fa8eb1f43d0315143e5d54eccd9db062"
+        baseline release="26.05" nixpkgs-rev="cf5e76507c6e23b59f7e0ffcc7baa2a39ddd8442" options-hash="blake3:674c56f2d8921cd7a661f8ad8350b0858a6f27eff7b821fc568bfd389a844d3b"
     }
 
     host "vm-plasma" {
-        baseline release="26.05" nixpkgs-rev="cf5e76507c6e23b59f7e0ffcc7baa2a39ddd8442" options-hash="blake3:2805e3faf56f70efda55813b734f8ae3fa8eb1f43d0315143e5d54eccd9db062"
+        baseline release="26.05" nixpkgs-rev="cf5e76507c6e23b59f7e0ffcc7baa2a39ddd8442" options-hash="blake3:674c56f2d8921cd7a661f8ad8350b0858a6f27eff7b821fc568bfd389a844d3b"
     }
 
     output "generated/flake.nix" {
-        hash "blake3:56882e1be54b38db7c2e11b3bba44ea9603a8ec5fb2416413eba2d6ef817894c"
+        hash "blake3:fdb8c701cc429ffe1532f1bf2cacd5132fa5e2aa52a00d259e9478228c9b5d0e"
         from "knixl.kdl"
         modules
     }
 
     output "generated/hosts/fw13.nix" {
-        hash "blake3:9342350488a07c8c47a20ec48ab9d515b5a685dffbc86fabfcd791c81aff2cc5"
+        hash "blake3:70b488300adb24bc593053369ac4380bf4c6f780955e40dcceb1f959131c4589"
         from "hosts/fw13.kdl"
         modules "base" "desktop" "disko" "home-manager" "host" "import" "nix-ld" "os" "package" "raw-nix" "user"
     }
 
     output "generated/hosts/vm-cosmic.nix" {
-        hash "blake3:fe0879a9d2ead1c52f28951c1a8ecc877c2c5627aa0627f9c5317f0afd2ae987"
+        hash "blake3:9d4907319992a29cb5bda4fbc8ae29158ad9c16351c2d43b5ed1522673aea839"
         from "hosts/vm-cosmic.kdl"
         modules "base" "desktop" "host" "os" "user" "vm-guest"
     }
 
     output "generated/hosts/vm-gnome.nix" {
-        hash "blake3:6248ff8ddde297915dad0f2cc4c0e906fceb70371f95cb916a5920b9663a7b3f"
+        hash "blake3:e4a40282a4d3714f27f0f27cb7b8916cc1a428ee6fee43a36b44761036eef1e7"
         from "hosts/vm-gnome.kdl"
         modules "base" "desktop" "host" "os" "package" "user" "vm-guest"
     }
 
     output "generated/hosts/vm-plasma.nix" {
-        hash "blake3:a01a975cb69bd28022ac2fae39d872944ba9efc9d4da4bac4b0fc6755802e675"
+        hash "blake3:d78d67eec22f6a75a08a9084b498fa1ad1dc5708975dc2557d7cc6262cf23b43"
         from "hosts/vm-plasma.kdl"
         modules "base" "desktop" "host" "os" "package" "user" "vm-guest"
     }

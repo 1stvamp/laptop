@@ -107,8 +107,13 @@ and opens a PR when the version moves.
 requests" turned on in the repo settings. Its PRs don't trigger `check.yml`, so it
 builds the package itself.
 
-ChatGPT is in nixpkgs-unstable, and comes in from there once knixl 1.7.0 can take
-packages from a second nixpkgs.
+## From nixpkgs-unstable
+
+ChatGPT (26.05 only has the macOS build) and Handy (not in 26.05 at all) come from a
+`nixpkgs-unstable` input, pinned by rev in `knixl.kdl`, through fw13's
+`package "<name>" from="nixpkgs-unstable"`. Bump that rev to update them. Handy
+also gets the udev rule and `input` group its own NixOS module would set, so dotool
+can type into GNOME.
 
 ## Installing
 
@@ -133,7 +138,7 @@ reboot`.
 
 ## Loop
 
-knixl itself is pinned in `mise.toml` (1.6.0, from the GitHub release, whose build
+knixl itself is pinned in `mise.toml` (1.7.0, from the GitHub release, whose build
 provenance mise verifies on install), so `mise install` in this directory gets the
 version the lock was written with.
 
@@ -177,10 +182,15 @@ Worth filing against knixl itself rather than working around forever:
    anything under `home-manager.users.<name>` through without checking it (before
    that it rejected all of it), because the NixOS options don't describe
    home-manager's per-user options.
-7. **The luks node has no `passwordFile`.** So the one disko option the install
-   needs is set in fw13's `raw-nix`, where the oracle can't check the path.
 
 ## Verification status
+
+Checked, with knixl 1.7.0, after adding the nixpkgs-unstable input:
+
+- `knixl check` is clean and all four hosts evaluate; the VMs' toplevel
+  derivations are unchanged.
+- fw13 has chatgpt 26.1117.41037 and handy 0.10.0 from unstable (Handy comes from
+  the binary cache), and luks's `password-file` emits disko's `passwordFile`.
 
 Checked, with knixl 1.6.0, after the move to the 13 Pro profile and the `os` node:
 

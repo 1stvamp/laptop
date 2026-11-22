@@ -3,7 +3,7 @@
   description = "knixl-generated system";
   inputs = {
     "disko" = {
-      url = "github:nix-community/disko/725ea35e410ad83be4931d1bff7e090eacaf3563";
+      url = "github:nix-community/disko/44761d4f745b95e037458a0e57133c5700c8e320";
       inputs."nixpkgs".follows = "nixpkgs";
     };
     "home-manager" = {
@@ -11,11 +11,14 @@
       inputs."nixpkgs".follows = "nixpkgs";
     };
     "nixos-hardware" = {
-      url = "github:NixOS/nixos-hardware/30d48a0ec6035f8140d0125af274f0de95f1e9b5";
+      url = "github:NixOS/nixos-hardware/33475966110df258f52d05ec4d4cd6394637cbb9";
       inputs."nixpkgs".follows = "nixpkgs";
     };
     "nixpkgs" = {
       url = "github:NixOS/nixpkgs/cf5e76507c6e23b59f7e0ffcc7baa2a39ddd8442";
+    };
+    "nixpkgs-unstable" = {
+      url = "github:NixOS/nixpkgs/2786a2a72088ecf32aea5b3ec52099e6a7cff78f";
     };
   };
   outputs =
@@ -24,6 +27,7 @@
       nixosConfigurations = {
         "fw13" = nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
+          specialArgs = { inherit inputs; };
           modules = [
             inputs."nixos-hardware".nixosModules."framework-intel-core-ultra-series3"
             inputs."disko".nixosModules."disko"
@@ -34,6 +38,7 @@
         };
         "vm-cosmic" = nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
+          specialArgs = { inherit inputs; };
           modules = [
             inputs."disko".nixosModules."disko"
             inputs."home-manager".nixosModules."home-manager"
@@ -43,6 +48,7 @@
         };
         "vm-gnome" = nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
+          specialArgs = { inherit inputs; };
           modules = [
             inputs."disko".nixosModules."disko"
             inputs."home-manager".nixosModules."home-manager"
@@ -52,6 +58,7 @@
         };
         "vm-plasma" = nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
+          specialArgs = { inherit inputs; };
           modules = [
             inputs."disko".nixosModules."disko"
             inputs."home-manager".nixosModules."home-manager"
