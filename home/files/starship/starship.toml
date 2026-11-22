@@ -1,0 +1,112 @@
+format = """\
+  $username\
+  $hostname\
+  $kubernetes\
+  $env_var\
+  $directory\
+  ${custom.gitbutler}\
+  $git_commit\
+  $git_state\
+  $git_status\
+  $hg_branch\
+  $docker_context\
+  $package\
+  $golang\
+  $java\
+  $nodejs\
+  $php\
+  $python\
+  $ruby\
+  $rust\
+  $terraform\
+  $memory_usage\
+  $crystal\
+  $cmd_duration\
+  $custom\
+  $jobs\
+  $time\
+  $character\
+  """
+command_timeout = 10000
+
+[character]
+format = "$symbol "
+
+[env_var.STARSHIP_DIRECTORY_BEFORE_REPO]
+format ="[$symbol$env_value]($style)" 
+
+[directory]
+truncation_length = 5
+format = '[$path]($style)[$read_only]($read_only_style) '
+
+[git_branch]
+symbol =  "🌿 "
+style = "grey"
+
+[git_state]
+format = '\([$state( $progress_current of $progress_total)]($style)\) '
+
+[git_status]
+conflicted = "⚔️"
+ahead = "🏎️ 💨 "
+behind = "🐢 "
+diverged = "🔱 "
+untracked = "🛤️× $count "
+stashed = "📦 "
+modified = "📝 × $count "
+staged = "🗃️ × $count "
+renamed = "📛 × $count "
+deleted = "🗑️ × $count "
+
+[custom.gitbutler]
+command = "~/.config/starship/gitbutler-branch.sh"
+when = true
+shell = ["bash", "--noprofile", "--norc"]
+format = "$output "
+disabled = false
+
+# Flags when node_modules is out of sync with pnpm-lock.yaml (pnpm install due).
+# The .pnpm-install-needed marker at the repo root is maintained out-of-band by
+# the pnpm-deps watcher, so this stays a cheap file existence check.
+[custom.pnpm_stale]
+description = "pnpm install needed (lockfile changed since last install)"
+when = 'test -f "$(git rev-parse --show-toplevel 2>/dev/null)/.pnpm-install-needed"'
+command = 'echo "pnpm install"'
+shell = ["bash", "--noprofile", "--norc"]
+symbol = "📥 "
+format = "[$symbol$output]($style) "
+style = "bold yellow"
+disabled = false
+
+# --- Claude Code statusline (starship statusline claude-code) ---
+[profiles]
+claude-code = "$claude_model$directory${custom.gitbutler}$git_status$claude_context"
+
+[claude_model]
+format = "[$symbol$model]($style) "
+symbol = "🤖 "
+style = "bold blue"
+
+[claude_context]
+format = "[$symbol$gauge $percentage · $total_tokens]($style) "
+symbol = "🧠 "
+gauge_full_symbol = "▰"
+gauge_partial_symbol = "▰"
+gauge_empty_symbol = "▱"
+gauge_width = 8
+
+[[claude_context.display]]
+threshold = 0
+style = "bold green"
+
+[[claude_context.display]]
+threshold = 40
+style = "bold yellow"
+
+[[claude_context.display]]
+threshold = 60
+style = "bold #ff8700"
+
+[[claude_context.display]]
+threshold = 80
+style = "bold red"

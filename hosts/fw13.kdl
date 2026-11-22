@@ -1,31 +1,47 @@
-// Framework Laptop 13, AMD Ryzen AI 300 series.
+// Framework Laptop 13 Pro, Intel Core Ultra Series 3 (Panther Lake).
 
 host "fw13" {
     system "x86_64-linux"
     nixpkgs release="26.05"
+    // wes's shell and the home-manager config knixl's node can't express.
+    import "../home"
+    // Claude desktop from Anthropic's deb; .github/workflows/claude-desktop.yml bumps it.
+    import "../pkgs/claude-desktop"
 
     // Replaces knixl.kdl's set rather than adding to it, hence the repeats.
     oracle-modules {
-        module "nixos-hardware" input="nixos-hardware" attr="framework-amd-ai-300-series"
+        module "nixos-hardware" input="nixos-hardware" attr="framework-intel-core-ultra-series3"
         module "disko" input="disko" attr="disko"
         module "home-manager" input="home-manager" attr="home-manager"
     }
 
-    base "26.05" {
+    os {
+        state-version "26.05"
         timezone "Europe/London"
         locale "en_GB.UTF-8"
+        boot-loader "systemd-boot"
+        efi-can-touch-variables #true
+        // The nixos-hardware profile only enforces a 6.17 floor; Panther Lake is new
+        // enough that the latest kernel is worth having.
+        kernel-package "linuxPackages_latest"
+        experimental-feature "nix-command"
+        experimental-feature "flakes"
+        trusted-user "wes"
+    }
+
+    base {
         keymap "gb"
-        nix-feature "nix-command"
-        nix-feature "flakes"
         allow-unfree
         networkmanager
         pipewire
         power-profiles
-        fwupd            // BIOS 3.05 or newer, or standby burns watts
+        fwupd
         printing
-        systemd-boot
-        efi-vars
     }
+
+    // Prebuilt, dynamically linked binaries (mise's tool downloads, mostly). No
+    // library children, so NixOS's default library set applies.
+    nix-ld { }
 
     desktop {
         gnome
@@ -37,8 +53,9 @@ host "fw13" {
             partition "ESP" size="1G" type="EF00" {
                 filesystem format="vfat" mountpoint="/boot"
             }
+            // password-file is read only while formatting; mise run install uploads it.
             partition "crypt" size="100%" {
-                luks name="cryptroot" {
+                luks name="cryptroot" password-file="/tmp/secret.key" {
                     filesystem format="ext4" mountpoint="/"
                 }
             }
@@ -52,10 +69,13 @@ host "fw13" {
         group "video"
         group "kvm"
         group "libvirtd"
+        // Handy's hotkeys read evdev (see raw-nix); any wes process can then read input.
+        group "input"
         group "incus-admin"
         // ssh-key "ssh-ed25519 AAAA... wes@fw13"
     }
 
+    // Program settings, packages, files and dconf are in home/wes.nix.
     home-manager "wes" state-version="26.05" {
         session-var "EDITOR" "nvim"
         session-var "PAGER" "less"
@@ -63,6 +83,13 @@ host "fw13" {
         program "zsh"
         program "direnv"   // per-project devshells: the big win over Ubuntu
         program "fzf"
+        program "starship"
+        program "zoxide"
+        program "broot"
+        program "bat"
+        program "gh"
+        program "mise"
+        program "wezterm"
     }
 
     package "ripgrep"
@@ -74,16 +101,43 @@ host "fw13" {
     package "firecracker"
     package "gnomeExtensions.pop-shell"
     package "gnomeExtensions.tiling-assistant"
+    package "google-chrome"
+    package "firefox"
+    package "slack"
+    package "discord"
+    package "mailspring"
+    package "zoom-us"
+    package "dropbox"
+    package "chatgpt" from="nixpkgs-unstable"
+    package "handy" from="nixpkgs-unstable"
 
     // What KDL can't express yet: package values, the VM/container stack and
     // specialisations. The oracle can't see into it, but the lock still hashes it.
     raw-nix {
         #"""
-        # Zen 5 (Strix / Krackan Point) needs a recent kernel; the LTS series
-        # lacks the platform patches for stability, power and performance.
-        boot.kernelPackages = pkgs.linuxPackages_latest;
+        # Normally set by hardware-configuration.nix, which this repo does without.
+        # Without it there is no wifi or GPU firmware and no microcode.
+        hardware.enableRedistributableFirmware = true;
 
-        fonts.packages = with pkgs; [ nerd-fonts.jetbrains-mono ];
+        fonts.packages = with pkgs; [
+          nerd-fonts.jetbrains-mono
+          maple-mono.NF  # wezterm's font
+        ];
+
+        programs._1password.enable = true;
+        programs._1password-gui = {
+          enable = true;
+          polkitPolicyOwners = [ "wes" ];
+        };
+
+        # Yubikey: smartcard daemon for gpg-agent, and udev rules for the device.
+        services.pcscd.enable = true;
+        services.udev.packages = [ pkgs.yubikey-personalization ];
+
+        # Handy (from Handy's own NixOS module): dotool types through /dev/uinput.
+        services.udev.extraRules = ''
+          KERNEL=="uinput", GROUP="input", MODE="0660"
+        '';
 
         virtualisation.libvirtd.enable = true;
         virtualisation.podman = {

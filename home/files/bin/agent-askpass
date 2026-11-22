@@ -1,0 +1,4 @@
+#!/bin/sh
+# sudo askpass helper for agents: shows the command and the asking session,
+# and refuses type40-shaped root commands. Logic lives in agent_guard.py.
+exec /usr/bin/python3 -I "$HOME/bin/agent_guard.py" askpass

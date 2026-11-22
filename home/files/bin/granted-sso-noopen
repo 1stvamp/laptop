@@ -1,0 +1,6 @@
+#!/bin/sh
+# Granted's SSO "browser": records the login URL instead of opening Chrome,
+# which crashes when granted launches it. Open the URL by hand.
+printf '%s %s\n' "$(date -u +%FT%TZ)" "$*" >> "$HOME/.granted/sso-urls.log"
+echo "Granted SSO login URL (not opened): $*" >&2
+exit 0

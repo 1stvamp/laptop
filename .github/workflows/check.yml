@@ -1,0 +1,69 @@
+# knixl check, then evaluate every host. The two catch different things: check refuses
+# KDL knixl can't interpret and generated files that don't match it, evaluation
+# catches emitted Nix that knixl is happy with but the module system isn't.
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: cachix/install-nix-action@3dc140bfc76c49fbd4dd958429132e3746bcb086 # v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      # knixl regenerates to compare, so it needs the formatter; this one comes from
+      # the flake's own nixpkgs so its version moves only with flake.lock.
+      - name: Install the formatter knixl regenerates with
+        run: |
+          set -euo pipefail
+          out="$(nix build --no-link --print-out-paths \
+            './generated#nixosConfigurations.fw13.pkgs.nixfmt-rfc-style')"
+          echo "$out/bin" >> "$GITHUB_PATH"
+
+      # The version comes from the lock, so CI runs the tool the lock was written with.
+      - name: Install knixl
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^ *tool version="\([^"]*\)".*/\1/p' knixl.lock.kdl)"
+          if ! printf '%s' "$version" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "tool version '$version' in knixl.lock.kdl is not a plain semver tag" >&2
+            exit 1
+          fi
+          tarball=knixl-x86_64-unknown-linux-gnu.tar.xz
+          base="https://github.com/1stvamp/knixl/releases/download/v${version}"
+          work="$(mktemp -d)"
+          curl -fsSL -o "$work/$tarball" "$base/$tarball"
+          curl -fsSL -o "$work/$tarball.sha256" "$base/$tarball.sha256"
+          ( cd "$work" && sha256sum -c "$tarball.sha256" )
+          tar -xf "$work/$tarball" -C "$work"
+          sudo install -m755 "$work/knixl-x86_64-unknown-linux-gnu/knixl" /usr/local/bin/knixl
+          knixl --version
+
+      - name: Check the generated Nix matches its KDL source
+        run: knixl check
+
+      # Evaluation rather than a build: the failures this guards against are all
+      # evaluation-time, and realising four desktop closures would take an age.
+      - name: Evaluate every host
+        run: |
+          set -euo pipefail
+          for host in fw13 vm-gnome vm-plasma vm-cosmic; do
+            printf '%s: ' "$host"
+            nix eval --raw "./generated#nixosConfigurations.${host}.config.system.build.toplevel.drvPath"
+            printf '\n'
+          done

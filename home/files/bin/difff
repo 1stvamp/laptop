@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# difff: run `diff` (unified by default) and render through diff-so-fancy.
+# - Adds -u unless a unified flag (-u, -U/-UN, --unified[=N], or a short
+#   cluster containing u) is already present.
+# - diff exit >= 2 means trouble: emit captured stdout + stderr, exit same code.
+# - diff exit 0/1: forward any stderr, pipe stdout to diff-so-fancy and return
+#   diff's exit code, unless diff-so-fancy itself errors (then return its code).
+#   diff-so-fancy not being installed is not treated as an error: fall back to
+#   the raw diff output and still return diff's exit code.
+
+set -o pipefail
+
+needs_u=true
+for a in "$@"; do
+  case "$a" in
+    --unified|--unified=*|-U|-U*) needs_u=false; break ;;
+  esac
+  # single-dash short cluster (not a long option) containing 'u'
+  if [[ "$a" == -[!-]* && "$a" == *u* ]]; then
+    needs_u=false
+    break
+  fi
+done
+
+if $needs_u; then
+  set -- -u "$@"
+fi
+
+stderr_file=$(mktemp "${TMPDIR:-/tmp}/difff.XXXXXX")
+
+out=$(diff "$@" 2>"$stderr_file")
+code=$?
+err=$(cat "$stderr_file")
+rm -f "$stderr_file"
+
+if (( code >= 2 )); then
+  [[ -n "$out" ]] && printf '%s\n' "$out"
+  [[ -n "$err" ]] && printf '%s\n' "$err" >&2
+  exit "$code"
+fi
+
+[[ -n "$err" ]] && printf '%s\n' "$err" >&2
+
+if ! command -v diff-so-fancy >/dev/null 2>&1; then
+  [[ -n "$out" ]] && printf '%s\n' "$out"
+  exit "$code"
+fi
+
+diff-so-fancy <<<"$out"
+dsf_code=$?
+(( dsf_code != 0 )) && exit "$dsf_code"
+exit "$code"

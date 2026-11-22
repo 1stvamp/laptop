@@ -1,0 +1,9 @@
+#!/bin/bash
+# Runs ./tools/devtool (from the current Firecracker checkout) with sccache
+# wired into its build container. Usage: devtool-sccache <devtool args>
+set -euo pipefail
+root=$(git rev-parse --show-toplevel)
+export DEVTOOL_SCCACHE_REAL_DOCKER=$(command -v docker)
+export DEVTOOL_SCCACHE_BIN=$(readlink -f "$(mise which sccache 2>/dev/null || command -v sccache)")
+export PATH="$HOME/.local/lib/devtool-sccache:$PATH"
+exec "$root/tools/devtool" "$@"

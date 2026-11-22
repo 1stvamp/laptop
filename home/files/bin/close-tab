@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Close the WezTerm tab this runs in, without the confirmation prompt.
+# kill-pane skips the prompt; killing every pane in the tab closes the tab.
+set -euo pipefail
+
+[[ -n "${WEZTERM_PANE:-}" ]] || { echo "close-tab: not running inside WezTerm" >&2; exit 1; }
+
+if command -v wezterm >/dev/null; then
+  wez=(wezterm)
+else
+  wez=(flatpak run org.wezfurlong.wezterm)
+fi
+
+panes=$("${wez[@]}" cli list --format json | python3 -c '
+import json, sys
+panes = json.load(sys.stdin)
+me = int(sys.argv[1])
+tab = next(p["tab_id"] for p in panes if p["pane_id"] == me)
+print(" ".join(str(p["pane_id"]) for p in panes if p["tab_id"] == tab and p["pane_id"] != me))
+' "$WEZTERM_PANE")
+
+for p in $panes; do
+  "${wez[@]}" cli kill-pane --pane-id "$p"
+done
+"${wez[@]}" cli kill-pane --pane-id "$WEZTERM_PANE"

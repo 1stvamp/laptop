@@ -1,0 +1,190 @@
+#!/usr/bin/python3
+"""gh wrapper: use the scoped triggerdotdev PAT for gh commands that target the
+triggerdotdev org, and pass everything else straight through to the real gh.
+
+Lives in ~/bin and shadows the real gh on PATH. It finds the next gh on PATH
+(skipping itself), and for invocations that target the triggerdotdev org it sets
+GH_TOKEN to $GITHUB_TRIGGERDOTDEV_TOKEN before exec'ing it. The org now rejects
+classic PATs org-wide, so gh's normal token 403s against triggerdotdev; this
+routes those calls through the fine-grained token instead, while leaving every
+other host/org on the user's default auth.
+
+Org is detected from, in order: -R/--repo, $GH_REPO, the current repo's git
+remotes, and finally any argument that names the org (e.g. `gh api
+repos/triggerdotdev/...`). An explicit -R/--repo or $GH_REPO for a different org
+wins and stops the fallback, so you can't accidentally leak the token elsewhere.
+"""
+
+import os
+import re
+import subprocess
+import sys
+
+ORG = "triggerdotdev"
+TOKEN_VAR = "GITHUB_TRIGGERDOTDEV_TOKEN"
+DEPLOY_GATE_VAR = "GH_TRIGGER_HAKUNA_MATATA"
+
+
+def find_real_gh():
+    """First gh on PATH that isn't this script."""
+    self_real = os.path.realpath(sys.argv[0])
+    seen = set()
+    for d in os.environ.get("PATH", "").split(os.pathsep):
+        if not d or d in seen:
+            continue
+        seen.add(d)
+        cand = os.path.join(d, "gh")
+        if (
+            os.path.isfile(cand)
+            and os.access(cand, os.X_OK)
+            and os.path.realpath(cand) != self_real
+        ):
+            return cand
+    return None
+
+
+def owner_from_spec(spec):
+    """Owner from owner/repo, [host/]owner/repo, an https URL, or a git remote."""
+    if not spec:
+        return None
+    spec = spec.strip()
+    m = re.match(r"^[^/@]+@[^/:]+:(.+)$", spec)  # scp-like: git@github.com:owner/repo
+    if m:
+        spec = m.group(1)
+    elif "://" in spec:
+        spec = spec.split("://", 1)[1]  # https://host/owner/repo -> host/owner/repo
+    if spec.endswith(".git"):
+        spec = spec[:-4]
+    parts = [p for p in spec.split("/") if p]
+    if len(parts) >= 2:
+        return parts[-2]  # repo is last, owner is second-to-last
+    return None
+
+
+def repo_arg_owner(argv):
+    """Owner named by an explicit -R/--repo flag, or None if not given."""
+    i = 0
+    while i < len(argv):
+        a = argv[i]
+        val = None
+        if a in ("-R", "--repo"):
+            val = argv[i + 1] if i + 1 < len(argv) else None
+        elif a.startswith("--repo="):
+            val = a[len("--repo="):]
+        elif a.startswith("-R="):
+            val = a[len("-R="):]
+        elif a.startswith("-R") and len(a) > 2:
+            val = a[2:]
+        if val is not None:
+            return owner_from_spec(val)
+        i += 1
+    return None
+
+
+def git_remotes_target_org():
+    try:
+        out = subprocess.run(
+            ["git", "remote", "-v"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except Exception:
+        return False
+    if out.returncode != 0:
+        return False
+    for line in out.stdout.splitlines():
+        cols = line.split()  # name\turl (fetch|push)
+        if len(cols) >= 2:
+            owner = owner_from_spec(cols[1])
+            if owner and owner.lower() == ORG:
+                return True
+    return False
+
+
+def targets_org(argv):
+    # 1. explicit -R/--repo wins outright (stops any fallback)
+    owner = repo_arg_owner(argv)
+    if owner is not None:
+        return owner.lower() == ORG
+    # 2. $GH_REPO also wins outright
+    if os.environ.get("GH_REPO"):
+        owner = owner_from_spec(os.environ["GH_REPO"])
+        if owner is not None:
+            return owner.lower() == ORG
+    # 3. current repo's remotes
+    if git_remotes_target_org():
+        return True
+    # 4. org named in any arg, e.g. `gh api repos/triggerdotdev/...`
+    needle = ORG.lower() + "/"
+    return any(needle in a.lower() for a in argv)
+
+
+def field_values(argv):
+    """All key=value pairs passed via gh's field flags (-f/-F/--field/--raw-field)."""
+    vals = []
+    flags = ("-f", "-F", "--field", "--raw-field")
+    i = 0
+    while i < len(argv):
+        a = argv[i]
+        val = None
+        if a in flags:
+            val = argv[i + 1] if i + 1 < len(argv) else None
+            i += 1
+        else:
+            for f in flags:
+                if a.startswith(f + "="):
+                    val = a[len(f) + 1:]
+                    break
+        if val is not None:
+            vals.append(val)
+        i += 1
+    return vals
+
+
+def approving_deployment(argv):
+    """True if this invocation approves a pending deployment.
+
+    gh has no first-class command for this; it is done by POSTing state=approved
+    to the .../actions/runs/{id}/pending_deployments REST endpoint.
+    """
+    if not any("pending_deployments" in a for a in argv):
+        return False
+    return any(v.strip() == "state=approved" for v in field_values(argv))
+
+
+def main():
+    argv = sys.argv[1:]
+    real_gh = find_real_gh()
+    if not real_gh:
+        sys.stderr.write("gh-wrapper: could not find the real gh on PATH\n")
+        return 127
+
+    if approving_deployment(argv) and os.environ.get(DEPLOY_GATE_VAR) != "true":
+        sys.stderr.write(
+            "gh-wrapper: refusing to approve deployment; set %s=true to allow\n"
+            % DEPLOY_GATE_VAR
+        )
+        return 1
+
+    env = dict(os.environ)
+    if targets_org(argv):
+        token = os.environ.get(TOKEN_VAR)
+        if token:
+            env["GH_TOKEN"] = token
+            env.pop("GITHUB_TOKEN", None)  # so the scoped GH_TOKEN wins unambiguously
+        else:
+            sys.stderr.write(
+                "gh-wrapper: targeting %s but %s is unset; falling back to default auth\n"
+                % (ORG, TOKEN_VAR)
+            )
+
+    try:
+        os.execve(real_gh, [real_gh] + argv, env)
+    except OSError as e:
+        sys.stderr.write("gh-wrapper: failed to exec %s: %s\n" % (real_gh, e))
+        return 126
+
+
+if __name__ == "__main__":
+    sys.exit(main())
