@@ -1,2 +1,2 @@
-- [ ] https://www.vicinae.com/
-- [ ] https://github.com/peteonrails/voxtype
+- [x] https://www.vicinae.com/
+- [x] https://github.com/peteonrails/voxtype
