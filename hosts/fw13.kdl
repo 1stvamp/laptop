@@ -44,8 +44,17 @@ host "fw13" {
     // library children, so NixOS's default library set applies.
     nix-ld { }
 
-    // Logged in interactively with `tailscale up`, so no auth-key.
-    tailscale { }
+    // Logged in interactively with `tailscale up`, so no auth-key. The operator flag
+    // lets tsw switch tailnets as wes.
+    tailscale {
+        set-flag "--operator=wes"
+    }
+
+    // nftables so `nft` shows real rules to Oneleet's firewall check; Docker and
+    // libvirt still work through iptables-nft.
+    firewall {
+        nftables #true
+    }
 
     desktop {
         gnome
@@ -158,10 +167,6 @@ host "fw13" {
           KERNEL=="uinput", GROUP="input", MODE="0660"
         '';
 
-        # No knixl node for the firewall. nftables so `nft` shows real rules to Oneleet's
-        # firewall check; Docker and libvirt still work through iptables-nft.
-        networking.nftables.enable = true;
-
         virtualisation.libvirtd.enable = true;
         virtualisation.docker.enable = true;
         programs.virt-manager.enable = true;
@@ -173,9 +178,6 @@ host "fw13" {
           enable = true;
           package = pkgs.gnomeExtensions.gsconnect;
         };
-
-        # The tailscale node has no `tailscale set` flags; tsw switches tailnets as wes.
-        services.tailscale.extraSetFlags = [ "--operator=wes" ];
         """#
     }
 }

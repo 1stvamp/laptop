@@ -155,7 +155,7 @@ reboot`.
 
 ## Loop
 
-knixl itself is pinned in `mise.toml` (1.7.0, from the GitHub release, whose build
+knixl itself is pinned in `mise.toml` (1.8.0, from the GitHub release, whose build
 provenance mise verifies on install), so `mise install` in this directory gets the
 version the lock was written with.
 
@@ -197,6 +197,10 @@ Worth filing against knixl itself rather than working around forever:
    home-manager's per-user options.
 
 ## Verification status
+
+Checked, with knixl 1.8.0, after moving nftables and tailscale's `--operator` flag
+from `raw-nix` into the new `firewall` node and tailscale's `set-flag`: `knixl check`
+is clean, and fw13's toplevel and VM derivations are unchanged.
 
 Checked, with knixl 1.7.0, after replacing vm-gnome with fw13's own VM:
 
