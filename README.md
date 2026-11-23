@@ -14,7 +14,7 @@ modules/desktop/       local module: the DE selector
 modules/vm-guest/      local module: fw13's VM-only settings (sizing, login, shared repo)
 home/default.nix       wes's login shell (zsh), and the import of home/wes.nix
 home/wes.nix           home-manager config: zsh, git, gpg-agent, Vicinae, dconf, packages
-home/files/            dotfiles: ~/bin, nvim-ai, wezterm, starship, mise
+home/files/            dotfiles: ~/bin, nvim-ai, wezterm, starship, mise, a GNOME extension
 pkgs/claude-desktop/   Claude desktop from Anthropic's .deb, and its bump script
 pkgs/oneleet/          Oneleet's compliance agent from its .deb, and its bump script
 generated/             knixl output (flake.nix, hosts/*.nix), never hand-edited
@@ -197,6 +197,15 @@ Worth filing against knixl itself rather than working around forever:
    home-manager's per-user options.
 
 ## Verification status
+
+Checked in fw13's VM (`mise run vm`, booted headless), after swapping Mailspring for
+Thunderbird and adding `hide-vicinae-from-dock`:
+
+- It boots to `running` with no failed units; all eight GNOME extensions are
+  `ACTIVE`; `oneleet-daemon` is active, the `dpkg-query` stub answers, and nftables
+  has the `nixos-fw` table.
+- With Vicinae open its icon is missing from the dock, and disabling
+  `hide-vicinae-from-dock` brings it back.
 
 Checked, with knixl 1.8.0, after moving nftables and tailscale's `--operator` flag
 from `raw-nix` into the new `firewall` node and tailscale's `set-flag`: `knixl check`

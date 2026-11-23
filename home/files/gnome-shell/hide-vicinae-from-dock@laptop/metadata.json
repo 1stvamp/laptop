@@ -1,0 +1,6 @@
+{
+  "uuid": "hide-vicinae-from-dock@laptop",
+  "name": "Hide Vicinae from the dock",
+  "description": "Leaves the Vicinae launcher out of the running apps the dock and overview list.",
+  "shell-version": ["50"]
+}

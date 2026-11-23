@@ -11,7 +11,7 @@ lock version=1 {
     flake-input "nixos-hardware" url="github:NixOS/nixos-hardware" rev="33475966110df258f52d05ec4d4cd6394637cbb9"
     flake-input "nixpkgs-unstable" url="github:NixOS/nixpkgs" rev="2786a2a72088ecf32aea5b3ec52099e6a7cff78f"
 
-    input "hosts/fw13.kdl" hash="blake3:cb7deafa36c621e39bbb9df0ac8332fbf5e1d37dfbbde41635621966855be6f2"
+    input "hosts/fw13.kdl" hash="blake3:d2c2ac5f4bf27cfc484b3eae680c878df79c497186c688fb00a8c2ebbc28b6c6"
 
     module "backups" version="0.2.1"
     module "base" version="2.0.0"
@@ -51,7 +51,7 @@ lock version=1 {
     }
 
     output "generated/hosts/fw13.nix" {
-        hash "blake3:8c1b913464a07877e82f28093af17e3557efbd9cd4eac633f550b5041da35ef8"
+        hash "blake3:a9acb0ac6158a5527977942222636379f13988c3e2b899e58eec59a20a1fb2db"
         from "hosts/fw13.kdl"
         modules "base" "desktop" "disko" "firewall" "home-manager" "host" "import" "nix-ld" "os" "package" "raw-nix" "tailscale" "user" "vm-guest"
     }

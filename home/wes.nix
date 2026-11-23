@@ -48,6 +48,8 @@ in
   xdg.configFile."starship.toml".source = live "starship/starship.toml";
   xdg.configFile."starship/gitbutler-branch.sh".source = live "starship/gitbutler-branch.sh";
   xdg.configFile."mise/config.toml".source = live "mise/config.toml";
+  xdg.dataFile."gnome-shell/extensions/hide-vicinae-from-dock@laptop".source =
+    live "gnome-shell/hide-vicinae-from-dock@laptop";
 
   programs.zsh = {
     history = {
@@ -252,7 +254,9 @@ in
   };
 
   dconf.settings = {
-    "org/gnome/shell".enabled-extensions = map (e: e.extensionUuid) extensions;
+    "org/gnome/shell".enabled-extensions = map (e: e.extensionUuid) extensions ++ [
+      "hide-vicinae-from-dock@laptop"
+    ];
     # GTK3 apps styled like libadwaita ones.
     "org/gnome/desktop/interface".gtk-theme = "adw-gtk3";
     "org/gnome/desktop/input-sources" = {
@@ -271,18 +275,15 @@ in
       two-finger-scrolling-enabled = true;
       natural-scroll = false;
     };
-    # Super+Space is Vicinae's; there's only the one layout to switch to anyway.
-    "org/gnome/desktop/wm/keybindings" = {
-      switch-input-source = [ ];
-      switch-input-source-backward = [ ];
-    };
+    # Alt+Space is Vicinae's; GNOME has it opening the window menu.
+    "org/gnome/desktop/wm/keybindings".activate-window-menu = [ ];
     "org/gnome/settings-daemon/plugins/media-keys".custom-keybindings = [
       "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vicinae/"
     ];
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vicinae" = {
       name = "Vicinae";
       command = "vicinae toggle";
-      binding = "<Super>space";
+      binding = "<Alt>space";
     };
   };
 

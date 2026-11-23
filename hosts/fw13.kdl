@@ -129,7 +129,7 @@ host "fw13" {
     package "firefox"
     package "slack"
     package "discord"
-    package "mailspring"
+    package "thunderbird"
     package "zoom-us"
     package "dropbox"
     package "krita"

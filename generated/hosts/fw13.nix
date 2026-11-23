@@ -135,7 +135,7 @@ in
     pkgs.firefox
     pkgs.slack
     pkgs.discord
-    pkgs.mailspring
+    pkgs.thunderbird
     pkgs.zoom-us
     pkgs.dropbox
     pkgs.krita
