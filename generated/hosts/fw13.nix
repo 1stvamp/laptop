@@ -18,6 +18,7 @@ in
   imports = [
     ../../home
     ../../pkgs/claude-desktop
+    ../../pkgs/oneleet
   ];
 
   nixpkgs.hostPlatform = "x86_64-linux";
@@ -46,6 +47,7 @@ in
   services.fwupd.enable = true;
   services.printing.enable = true;
   programs.nix-ld.enable = true;
+  services.tailscale.enable = true;
   services.displayManager.gdm.enable = true;
   services.desktopManager.gnome.enable = true;
   disko.devices.disk."main" = {
@@ -87,7 +89,7 @@ in
     "kvm"
     "libvirtd"
     "input"
-    "incus-admin"
+    "docker"
   ];
   users.users."wes".description = "Wes";
   home-manager.useUserPackages = true;
@@ -114,8 +116,6 @@ in
     pkgs.qemu_kvm
     pkgs.cloud-hypervisor
     pkgs.firecracker
-    pkgs.gnomeExtensions.pop-shell
-    pkgs.gnomeExtensions.tiling-assistant
     pkgs.google-chrome
     pkgs.firefox
     pkgs.slack
@@ -123,6 +123,9 @@ in
     pkgs.mailspring
     pkgs.zoom-us
     pkgs.dropbox
+    pkgs.krita
+    pkgs.ktailctl
+    pkgs.heroic
     (import inputs."nixpkgs-unstable" _knixl0)."chatgpt"
     (import inputs."nixpkgs-unstable" _knixl0)."handy"
   ];
@@ -134,6 +137,8 @@ in
   fonts.packages = with pkgs; [
     nerd-fonts.jetbrains-mono
     maple-mono.NF # wezterm's font
+    noto-fonts
+    noto-fonts-cjk-sans
   ];
 
   programs._1password.enable = true;
@@ -152,19 +157,17 @@ in
   '';
 
   virtualisation.libvirtd.enable = true;
-  virtualisation.podman = {
-    enable = true;
-    dockerCompat = true;
-    defaultNetwork.settings.dns_enabled = true;
-  };
+  virtualisation.docker.enable = true;
   programs.virt-manager.enable = true;
 
-  # A Plasma boot menu entry, to try it on the metal without regenerating.
-  specialisation.plasma.configuration = {
-    services.desktopManager.gnome.enable = lib.mkForce false;
-    services.displayManager.gdm.enable = lib.mkForce false;
-    services.displayManager.sddm.enable = true;
-    services.displayManager.sddm.wayland.enable = true;
-    services.desktopManager.plasma6.enable = true;
+  programs.steam.enable = true;
+
+  # GSConnect is the GNOME KDE Connect; this opens its firewall ports.
+  programs.kdeconnect = {
+    enable = true;
+    package = pkgs.gnomeExtensions.gsconnect;
   };
+
+  # The tailscale node has no `tailscale set` flags; tsw switches tailnets as wes.
+  services.tailscale.extraSetFlags = [ "--operator=wes" ];
 }

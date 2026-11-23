@@ -5,8 +5,9 @@ host "fw13" {
     nixpkgs release="26.05"
     // wes's shell and the home-manager config knixl's node can't express.
     import "../home"
-    // Claude desktop from Anthropic's deb; .github/workflows/claude-desktop.yml bumps it.
+    // Vendor debs, repackaged; .github/workflows/bump.yml bumps them.
     import "../pkgs/claude-desktop"
+    import "../pkgs/oneleet"
 
     // Replaces knixl.kdl's set rather than adding to it, hence the repeats.
     oracle-modules {
@@ -43,6 +44,9 @@ host "fw13" {
     // library children, so NixOS's default library set applies.
     nix-ld { }
 
+    // Logged in interactively with `tailscale up`, so no auth-key.
+    tailscale { }
+
     desktop {
         gnome
     }
@@ -71,7 +75,7 @@ host "fw13" {
         group "libvirtd"
         // Handy's hotkeys read evdev (see raw-nix); any wes process can then read input.
         group "input"
-        group "incus-admin"
+        group "docker"
         // ssh-key "ssh-ed25519 AAAA... wes@fw13"
     }
 
@@ -99,8 +103,6 @@ host "fw13" {
     package "qemu_kvm"
     package "cloud-hypervisor"
     package "firecracker"
-    package "gnomeExtensions.pop-shell"
-    package "gnomeExtensions.tiling-assistant"
     package "google-chrome"
     package "firefox"
     package "slack"
@@ -108,11 +110,13 @@ host "fw13" {
     package "mailspring"
     package "zoom-us"
     package "dropbox"
+    package "krita"
+    package "ktailctl"
+    package "heroic"
     package "chatgpt" from="nixpkgs-unstable"
     package "handy" from="nixpkgs-unstable"
 
-    // What KDL can't express yet: package values, the VM/container stack and
-    // specialisations. The oracle can't see into it, but the lock still hashes it.
+    // What KDL can't express yet: package values and the VM/container stack. The oracle can't see into it, but the lock still hashes it.
     raw-nix {
         #"""
         # Normally set by hardware-configuration.nix, which this repo does without.
@@ -122,6 +126,8 @@ host "fw13" {
         fonts.packages = with pkgs; [
           nerd-fonts.jetbrains-mono
           maple-mono.NF  # wezterm's font
+          noto-fonts
+          noto-fonts-cjk-sans
         ];
 
         programs._1password.enable = true;
@@ -140,21 +146,19 @@ host "fw13" {
         '';
 
         virtualisation.libvirtd.enable = true;
-        virtualisation.podman = {
-          enable = true;
-          dockerCompat = true;
-          defaultNetwork.settings.dns_enabled = true;
-        };
+        virtualisation.docker.enable = true;
         programs.virt-manager.enable = true;
 
-        # A Plasma boot menu entry, to try it on the metal without regenerating.
-        specialisation.plasma.configuration = {
-          services.desktopManager.gnome.enable = lib.mkForce false;
-          services.displayManager.gdm.enable = lib.mkForce false;
-          services.displayManager.sddm.enable = true;
-          services.displayManager.sddm.wayland.enable = true;
-          services.desktopManager.plasma6.enable = true;
+        programs.steam.enable = true;
+
+        # GSConnect is the GNOME KDE Connect; this opens its firewall ports.
+        programs.kdeconnect = {
+          enable = true;
+          package = pkgs.gnomeExtensions.gsconnect;
         };
+
+        # The tailscale node has no `tailscale set` flags; tsw switches tailnets as wes.
+        services.tailscale.extraSetFlags = [ "--operator=wes" ];
         """#
     }
 }

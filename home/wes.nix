@@ -11,6 +11,17 @@ let
   # the checkout rather than copied into the store, so this path must exist.
   repo = "${config.home.homeDirectory}/projects/laptop/home/files";
   live = path: config.lib.file.mkOutOfStoreSymlink "${repo}/${path}";
+
+  # One tiling extension only (Tiling Shell); two fight over the same windows.
+  extensions = with pkgs.gnomeExtensions; [
+    vicinae
+    dash-to-dock
+    appindicator
+    tiling-shell
+    vitals
+    gsconnect
+    caffeine
+  ];
 in
 {
   home.sessionVariables = {
@@ -241,7 +252,9 @@ in
   };
 
   dconf.settings = {
-    "org/gnome/shell".enabled-extensions = [ pkgs.gnomeExtensions.vicinae.extensionUuid ];
+    "org/gnome/shell".enabled-extensions = map (e: e.extensionUuid) extensions;
+    # GTK3 apps styled like libadwaita ones.
+    "org/gnome/desktop/interface".gtk-theme = "adw-gtk3";
     "org/gnome/desktop/input-sources" = {
       sources = [ (lib.hm.gvariant.mkTuple [ "xkb" "gb" ]) ];
       xkb-options = [ "caps:escape" ];
@@ -301,8 +314,13 @@ in
     Install.WantedBy = [ "timers.target" ];
   };
 
-  home.packages = with pkgs; [
-    gnomeExtensions.vicinae
+  home.packages = extensions ++ (with pkgs; [
+    gradia
+    iotas
+    resources
+    gnome-extension-manager
+    refine
+    adw-gtk3
     wl-clipboard
     yubikey-manager
     # shell tools the aliases and prompt expect
@@ -354,5 +372,10 @@ in
     mkcert
     sops
     age
-  ];
+    ncdu
+    nmap
+    testssl
+    infisical
+    aws-vault
+  ]);
 }

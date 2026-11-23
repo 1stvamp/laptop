@@ -1,6 +1,6 @@
 # laptop
 
-A knixl project: swappable-desktop NixOS for the Framework Laptop 13 Pro (Intel Core
+A knixl project: GNOME on NixOS for the Framework Laptop 13 Pro (Intel Core
 Ultra Series 3, Panther Lake), testable in a VM first. KDL is the source of truth, and everything under
 `generated/` (the flake included) is knixl output.
 
@@ -9,7 +9,7 @@ knixl.kdl              project: flake inputs, and the disko/home-manager modules
 knixl.lock.kdl         knixl's lock: tool, modules, nixpkgs baseline, input revs
 mise.toml              the knixl version, the vm tasks and the install task
 hosts/fw13.kdl         the laptop
-hosts/vm-{gnome,plasma,cosmic}.kdl   one throwaway VM per desktop
+hosts/vm-gnome.kdl     a throwaway VM with the same desktop
 modules/base/          local module: keyboard, networking, audio, power, firmware, printing
 modules/desktop/       local module: the DE selector
 modules/vm-guest/      local module: QEMU guest agents, build-vm sizing, a VM password
@@ -17,6 +17,7 @@ home/default.nix       wes's login shell (zsh), and the import of home/wes.nix
 home/wes.nix           home-manager config: zsh, git, gpg-agent, Vicinae, dconf, packages
 home/files/            dotfiles: ~/bin, nvim-ai, wezterm, starship, mise
 pkgs/claude-desktop/   Claude desktop from Anthropic's .deb, and its bump script
+pkgs/oneleet/          Oneleet's compliance agent from its .deb, and its bump script
 generated/             knixl output (flake.nix, hosts/*.nix), never hand-edited
 generated/flake.lock   nix's lock, derived from knixl.lock.kdl, commit it
 ```
@@ -51,31 +52,23 @@ so leave `hardware.framework.laptop13.audioEnhancement` alone.
 **Note**: the project set applies to every host, so the VMs import the disko and
 home-manager modules too. Both are inert without config.
 
-## Testing desktops
+## Testing the desktop
 
 ```sh
-mise run vm              # gnome; or: mise run vm plasma, mise run vm cosmic
+mise run vm
 ```
 
-That regenerates from the KDL, builds the VM into `result-vm-<desktop>` and boots
+That regenerates from the KDL, builds the GNOME VM into `result-vm-gnome` and boots
 it in a window. You're logged in as `wes` automatically; the password is also
 `wes`, for when the idle lock screen kicks in. 8GB, 4 cores.
 
 The disk is a fresh temp image every run and is deleted when the VM exits, so
-nothing persists between runs. `mise run vm:build <desktop>` does the first two
-steps without booting.
+nothing persists between runs. `mise run vm:build` does the first two steps
+without booting.
 
-Changing the laptop's desktop is one flag in `hosts/fw13.kdl`:
-
-```kdl
-desktop {
-    gnome     // -> plasma, or cosmic
-}
-```
-
-then `knixl generate && nixos-rebuild switch --flake ./generated#fw13`. On the
-metal you can also skip the regenerate cycle: fw13's `raw-nix` carries a
-`specialisation.plasma`, so Plasma is a boot menu entry alongside the default.
+The Plasma and COSMIC VMs, and fw13's Plasma boot entry, went once GNOME was
+settled on. `modules/desktop/` still has their flags, so trying one again is a
+host file away.
 
 ## Home
 
@@ -100,12 +93,28 @@ nixpkgs doesn't package it, so `pkgs/claude-desktop/` repackages Anthropic's
 official `.deb` (adapted from kubastick/claude-desktop-nixos, MIT), plus the nix-ld
 and KVM setup its Code and Cowork tabs need. `update.sh` points `sources.json` at
 the newest version in Anthropic's apt repo, after checking the repo's signed index
-against `archive-keyring.asc`. `.github/workflows/claude-desktop.yml` runs it daily
+against `archive-keyring.asc`. `.github/workflows/bump.yml` runs it daily
 and opens a PR when the version moves.
 
 **Note**: the workflow needs "Allow GitHub Actions to create and approve pull
 requests" turned on in the repo settings. Its PRs don't trigger `check.yml`, so it
 builds the package itself.
+
+## Oneleet
+
+Oneleet only ships a `.deb` and an `.rpm`, so `pkgs/oneleet/` repackages the deb
+and does what its postinst would: a root `oneleet-daemon` unit, and `/opt/Oneleet`
+linked to the store, since the daemon has that path compiled in. `update.sh` reads
+the same feed the agent's self-updater does (`beta-linux.yml`), and `bump.yml` runs
+it alongside claude-desktop's. The feed isn't signed, so the bump trusts its TLS
+and nothing more.
+
+Enrol with `sudo oneleet-cli login --enrollment-token-stdin`.
+
+**Note**: tell IT before relying on it. Its software inventory reads dpkg or rpm, so
+it will come back empty; remote install and wipe tasks won't work; and Oneleet may
+flag NixOS as unsupported. If the self-updater replaces `/opt/Oneleet` with a
+directory, the tmpfiles rule puts the store link back at the next boot.
 
 ## From nixpkgs-unstable
 
@@ -175,7 +184,7 @@ Worth filing against knixl itself rather than working around forever:
    and knixl generates it happily; you only find out from the NixOS eval conflict.
    A `one-of` schema constraint would catch it at generate time.
 5. **No cross-host sharing.** Host files are standalone, which is why `base` exists
-   as a module, and the four hosts still repeat the same `os` and `base` blocks.
+   as a module, and the two hosts still repeat the same `os` and `base` blocks.
    `base` now only carries what `os` doesn't (keymap, unfree, networkmanager,
    pipewire, power, fwupd, printing).
 6. **home-manager interiors are unchecked.** Since knixl 1.5.0 the oracle lets
@@ -184,6 +193,13 @@ Worth filing against knixl itself rather than working around forever:
    home-manager's per-user options.
 
 ## Verification status
+
+Checked, with knixl 1.7.0, after adding Oneleet and the GNOME extensions and
+dropping the Plasma and COSMIC hosts:
+
+- `knixl check` is clean, fw13 evaluates, and vm-gnome's toplevel derivation is
+  unchanged.
+- oneleet 2.5.0 builds, and its binaries resolve every library.
 
 Checked, with knixl 1.7.0, after adding the nixpkgs-unstable input:
 
@@ -221,11 +237,14 @@ toplevel derivation unchanged:
 
 Not checked:
 
-- The GNOME desktop in a real window, the plasma and cosmic VMs, or anything on
-  the metal.
+- The GNOME desktop in a real window, or anything on the metal.
 - `mise run install`, end to end.
 - Claude desktop on NixOS: its window, the Code tab under nix-ld, and Cowork's VM.
-  `claude-desktop.yml` hasn't run either.
+  `bump.yml` hasn't run either.
+- Oneleet on NixOS: enrolment, the daemon's checks, the tray app and what the
+  self-updater does to `/opt/Oneleet`.
+- The GNOME extensions (Dash to Dock, AppIndicator, Tiling Shell, Vitals, GSConnect,
+  Caffeine) beyond evaluating them.
 - Anything in `home/`, beyond evaluating it: no session has run zsh, Vicinae or the
   dconf settings yet.
 - `hardware-configuration.nix`. disko supplies the filesystems and nixos-hardware

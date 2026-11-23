@@ -58,11 +58,11 @@ jobs:
         run: knixl check
 
       # Evaluation rather than a build: the failures this guards against are all
-      # evaluation-time, and realising four desktop closures would take an age.
+      # evaluation-time, and realising two desktop closures would take an age.
       - name: Evaluate every host
         run: |
           set -euo pipefail
-          for host in fw13 vm-gnome vm-plasma vm-cosmic; do
+          for host in fw13 vm-gnome; do
             printf '%s: ' "$host"
             nix eval --raw "./generated#nixosConfigurations.${host}.config.system.build.toplevel.drvPath"
             printf '\n'

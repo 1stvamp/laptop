@@ -36,16 +36,6 @@
             { system.stateVersion = "26.05"; }
           ];
         };
-        "vm-cosmic" = nixpkgs.lib.nixosSystem {
-          system = "x86_64-linux";
-          specialArgs = { inherit inputs; };
-          modules = [
-            inputs."disko".nixosModules."disko"
-            inputs."home-manager".nixosModules."home-manager"
-            ./hosts/vm-cosmic.nix
-            { system.stateVersion = "26.05"; }
-          ];
-        };
         "vm-gnome" = nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
           specialArgs = { inherit inputs; };
@@ -53,16 +43,6 @@
             inputs."disko".nixosModules."disko"
             inputs."home-manager".nixosModules."home-manager"
             ./hosts/vm-gnome.nix
-            { system.stateVersion = "26.05"; }
-          ];
-        };
-        "vm-plasma" = nixpkgs.lib.nixosSystem {
-          system = "x86_64-linux";
-          specialArgs = { inherit inputs; };
-          modules = [
-            inputs."disko".nixosModules."disko"
-            inputs."home-manager".nixosModules."home-manager"
-            ./hosts/vm-plasma.nix
             { system.stateVersion = "26.05"; }
           ];
         };
