@@ -51,6 +51,19 @@ host "fw13" {
         gnome
     }
 
+    // Only for `mise run vm`, which boots this host in QEMU; inert on the laptop.
+    vm-guest {
+        memory-mb 8192
+        cores 4
+        disk-mb 16384
+        initial-password "wes" password="wes"
+        autologin "wes"
+        // The checkout, so home/files' out-of-store links resolve. mise sets LAPTOP_REPO.
+        share "laptop" source="\"$LAPTOP_REPO\"" target="/home/wes/projects/laptop"
+        guest-agent
+        spice
+    }
+
     // ext4 rather than btrfs: the disko built-in has no btrfs (README, known gaps).
     disko {
         disk "main" device="/dev/nvme0n1" {
@@ -144,6 +157,10 @@ host "fw13" {
         services.udev.extraRules = ''
           KERNEL=="uinput", GROUP="input", MODE="0660"
         '';
+
+        # No knixl node for the firewall. nftables so `nft` shows real rules to Oneleet's
+        # firewall check; Docker and libvirt still work through iptables-nft.
+        networking.nftables.enable = true;
 
         virtualisation.libvirtd.enable = true;
         virtualisation.docker.enable = true;

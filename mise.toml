@@ -2,26 +2,26 @@
 "github:1stvamp/knixl" = "1.7.0"
 
 [tasks."vm:build"]
-description = "Regenerate from KDL and build the GNOME test VM"
+description = "Regenerate from KDL and build fw13 as a QEMU VM"
 run = '''
 #!/usr/bin/env bash
 set -euo pipefail
-host="vm-gnome"
+host="fw13"
 knixl generate
-nix build "./generated#nixosConfigurations.${host}.config.system.build.vm" -o "result-${host}"
+nix build "./generated#nixosConfigurations.${host}.config.system.build.vm" -o result-vm
 '''
 
 [tasks.vm]
-description = "Build and boot the GNOME test VM (fresh disk every run)"
+description = "Build and boot fw13 as a QEMU VM (fresh disk every run)"
 run = '''
 #!/usr/bin/env bash
 set -euo pipefail
-host="vm-gnome"
+host="fw13"
 mise run vm:build
 # The runner otherwise keeps ./<host>.qcow2 across boots.
 disk_dir="$(mktemp -d)"
 trap 'rm -rf "$disk_dir"' EXIT
-NIX_DISK_IMAGE="$disk_dir/${host}.qcow2" "./result-${host}/bin/run-${host}-vm"
+LAPTOP_REPO="$PWD" NIX_DISK_IMAGE="$disk_dir/${host}.qcow2" "./result-vm/bin/run-${host}-vm"
 '''
 
 # nixos-anywhere onto the laptop booted from the stock NixOS installer: run `passwd`

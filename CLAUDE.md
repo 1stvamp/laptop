@@ -6,6 +6,6 @@ NixOS for the Framework Laptop 13 Pro (Intel Core Ultra Series 3), written as kn
 - `generated/` is knixl output, the flake included. Never edit it. After changing KDL run `knixl generate`, then `knixl check`, and commit the regenerated files and `knixl.lock.kdl` with the change.
 - After changing an input or a rev: `knixl upgrade --yes`, `knixl generate`, `git add generated/`, then `nix flake lock` in `generated/`. The add has to come first, since nix only sees tracked files in a git flake.
 - Reusable Nix that no node can express (a derivation, a module defining options) goes in its own file and comes in through a host `import "<path>"` node. Never `imports =` in raw-nix.
-- Verify a change by evaluating every host: `nix eval --raw ./generated#nixosConfigurations.<host>.config.system.build.toplevel.drvPath` for fw13 and vm-gnome (this is what CI runs). A change meant for fw13 only should leave vm-gnome's drvPath unchanged.
-- `mise run vm` boots a throwaway GNOME VM; `mise run install <address>` wipes and installs the laptop, so never run it without being asked.
+- Verify a change by evaluating fw13 and its VM: `nix eval --raw ./generated#nixosConfigurations.fw13.config.system.build.toplevel.drvPath`, and the same for `system.build.vm` (this is what CI runs). A change to `vm-guest` alone should leave the toplevel drvPath unchanged.
+- `mise run vm` boots fw13 itself in a throwaway VM; `mise run install <address>` wipes and installs the laptop, so never run it without being asked.
 - wes's home-manager config is `home/wes.nix` (program enables stay in fw13's `home-manager` node). Files under `home/files/` are out-of-store symlinks into this checkout. This repo is public: no secrets, and nothing naming private trigger.dev repos or internal tooling.

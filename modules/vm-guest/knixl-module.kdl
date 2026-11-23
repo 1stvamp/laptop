@@ -1,13 +1,12 @@
-// vmVariant settings only apply under build-vm, so they're inert on real hardware.
-// The root filesystem is a stub; build-vm puts its own disk image over it.
+// Every setting goes under virtualisation.vmVariant, so it only applies to the
+// build-vm output and is inert on real hardware.
 
-module name="vm-guest" version="1.0.0" {
-    summary "QEMU guest agents, a root filesystem stub, and build-vm sizing."
+module name="vm-guest" version="2.0.0" {
+    summary "build-vm sizing, guest agents, a login and a shared folder, for testing a host in QEMU."
     claims-node "vm-guest"
 
     schema {
-        child "memory-mb" repeated=#true \
-            doc="RAM for the build-vm variant. COSMIC and Plasma want 8192 or more. At most one." {
+        child "memory-mb" repeated=#true doc="RAM for the build-vm variant. At most one." {
             arg "mb" type="int" required=#true
         }
         child "cores" repeated=#true doc="vCPUs for the build-vm variant. At most one." {
@@ -16,15 +15,19 @@ module name="vm-guest" version="1.0.0" {
         child "disk-mb" repeated=#true doc="Disk size for the build-vm variant. At most one." {
             arg "mb" type="int" required=#true
         }
-        child "root-label" repeated=#true \
-            doc="Filesystem label for the root stub. At most one." {
-            arg "label" type="string" required=#true
-            prop "fs-type" type="string" required=#true
-        }
         child "initial-password" repeated=#true \
-            doc="Plaintext password for a user, for getting past an idle lock screen. Throwaway VMs only: it lands in the store and in git." {
+            doc="Plaintext password for a user in the VM, for getting past an idle lock screen. It lands in the store and in git." {
             arg "user" type="string" required=#true
             prop "password" type="string" required=#true
+        }
+        child "autologin" repeated=#true doc="Log this user in at the display manager in the VM. At most one." {
+            arg "user" type="string" required=#true
+        }
+        child "share" repeated=#true \
+            doc="A host directory mounted in the VM over 9p. source is expanded by the run script's shell, so it can name an environment variable." {
+            arg "tag" type="string" required=#true
+            prop "source" type="string" required=#true
+            prop "target" type="string" required=#true
         }
         child "guest-agent" type="bool" doc="qemu-guest-agent, for graceful shutdown and host integration."
         child "spice" type="bool" doc="spice-vdagent, for clipboard sharing and dynamic display resize."
@@ -40,18 +43,22 @@ module name="vm-guest" version="1.0.0" {
         for-each "d" in "disk-mb" {
             set "virtualisation.vmVariant.virtualisation.diskSize" (scalar)"{d.mb}"
         }
-        for-each "r" in "root-label" {
-            set "fileSystems.\"/\".device" "/dev/disk/by-label/{r.label}"
-            set "fileSystems.\"/\".fsType" "{r.fs-type}"
-        }
         for-each "p" in "initial-password" {
-            set "users.users.{p.user}.initialPassword" "{p.password}"
+            set "virtualisation.vmVariant.users.users.{p.user}.initialPassword" "{p.password}"
+        }
+        for-each "a" in "autologin" {
+            set "virtualisation.vmVariant.services.displayManager.autoLogin.enable" #true
+            set "virtualisation.vmVariant.services.displayManager.autoLogin.user" "{a.user}"
+        }
+        for-each "s" in "share" {
+            set "virtualisation.vmVariant.virtualisation.sharedDirectories.{s.tag}.source" "{s.source}"
+            set "virtualisation.vmVariant.virtualisation.sharedDirectories.{s.tag}.target" "{s.target}"
         }
         when-flag "guest-agent" {
-            set "services.qemuGuest.enable" #true
+            set "virtualisation.vmVariant.services.qemuGuest.enable" #true
         }
         when-flag "spice" {
-            set "services.spice-vdagentd.enable" #true
+            set "virtualisation.vmVariant.services.spice-vdagentd.enable" #true
         }
     }
 }

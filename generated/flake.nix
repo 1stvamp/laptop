@@ -36,16 +36,6 @@
             { system.stateVersion = "26.05"; }
           ];
         };
-        "vm-gnome" = nixpkgs.lib.nixosSystem {
-          system = "x86_64-linux";
-          specialArgs = { inherit inputs; };
-          modules = [
-            inputs."disko".nixosModules."disko"
-            inputs."home-manager".nixosModules."home-manager"
-            ./hosts/vm-gnome.nix
-            { system.stateVersion = "26.05"; }
-          ];
-        };
       };
       formatter = {
         "x86_64-linux" = nixpkgs.legacyPackages."x86_64-linux"."nixfmt-rfc-style";

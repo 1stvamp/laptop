@@ -50,6 +50,17 @@ in
   services.tailscale.enable = true;
   services.displayManager.gdm.enable = true;
   services.desktopManager.gnome.enable = true;
+  virtualisation.vmVariant.virtualisation.memorySize = 8192;
+  virtualisation.vmVariant.virtualisation.cores = 4;
+  virtualisation.vmVariant.virtualisation.diskSize = 16384;
+  virtualisation.vmVariant.users.users."wes".initialPassword = "wes";
+  virtualisation.vmVariant.services.displayManager.autoLogin.enable = true;
+  virtualisation.vmVariant.services.displayManager.autoLogin.user = "wes";
+  virtualisation.vmVariant.virtualisation.sharedDirectories."laptop".source = "\"$LAPTOP_REPO\"";
+  virtualisation.vmVariant.virtualisation.sharedDirectories."laptop".target =
+    "/home/wes/projects/laptop";
+  virtualisation.vmVariant.services.qemuGuest.enable = true;
+  virtualisation.vmVariant.services.spice-vdagentd.enable = true;
   disko.devices.disk."main" = {
     content = {
       partitions = {
@@ -155,6 +166,10 @@ in
   services.udev.extraRules = ''
     KERNEL=="uinput", GROUP="input", MODE="0660"
   '';
+
+  # No knixl node for the firewall. nftables so `nft` shows real rules to Oneleet's
+  # firewall check; Docker and libvirt still work through iptables-nft.
+  networking.nftables.enable = true;
 
   virtualisation.libvirtd.enable = true;
   virtualisation.docker.enable = true;

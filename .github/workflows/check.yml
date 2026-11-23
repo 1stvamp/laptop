@@ -1,4 +1,4 @@
-# knixl check, then evaluate every host. The two catch different things: check refuses
+# knixl check, then evaluate fw13 and its VM. The two catch different things: check refuses
 # KDL knixl can't interpret and generated files that don't match it, evaluation
 # catches emitted Nix that knixl is happy with but the module system isn't.
 name: check
@@ -58,12 +58,12 @@ jobs:
         run: knixl check
 
       # Evaluation rather than a build: the failures this guards against are all
-      # evaluation-time, and realising two desktop closures would take an age.
-      - name: Evaluate every host
+      # evaluation-time, and realising a desktop closure would take an age.
+      - name: Evaluate fw13 and its VM
         run: |
           set -euo pipefail
-          for host in fw13 vm-gnome; do
-            printf '%s: ' "$host"
-            nix eval --raw "./generated#nixosConfigurations.${host}.config.system.build.toplevel.drvPath"
+          for build in toplevel vm; do
+            printf 'fw13 %s: ' "$build"
+            nix eval --raw "./generated#nixosConfigurations.fw13.config.system.build.${build}.drvPath"
             printf '\n'
           done

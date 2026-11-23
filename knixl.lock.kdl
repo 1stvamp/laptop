@@ -11,8 +11,7 @@ lock version=1 {
     flake-input "nixos-hardware" url="github:NixOS/nixos-hardware" rev="33475966110df258f52d05ec4d4cd6394637cbb9"
     flake-input "nixpkgs-unstable" url="github:NixOS/nixpkgs" rev="2786a2a72088ecf32aea5b3ec52099e6a7cff78f"
 
-    input "hosts/fw13.kdl" hash="blake3:f9433143684de4397409ed9542f4df6f0e09a059cd2c1986456102f19ec2de94"
-    input "hosts/vm-gnome.kdl" hash="blake3:2ab4c477323f1e273313843c7ed9934fc7ea496f4a55e35e5bbad6cf732c46f9"
+    input "hosts/fw13.kdl" hash="blake3:3890137b710648b2d13120d4aa45dba8e3b25fd12164a9bbaf23bf1fbbde5e52"
 
     module "backups" version="0.2.1"
     module "base" version="2.0.0"
@@ -32,7 +31,7 @@ lock version=1 {
     module "security-headers" version="1.0.0"
     module "tailscale" version="1.0.0"
     module "user" version="1.0.0"
-    module "vm-guest" version="1.0.0"
+    module "vm-guest" version="2.0.0"
     module "web-service" version="1.2.0"
     module "zfs" version="1.0.0"
 
@@ -44,25 +43,15 @@ lock version=1 {
         }
     }
 
-    host "vm-gnome" {
-        baseline release="26.05" nixpkgs-rev="cf5e76507c6e23b59f7e0ffcc7baa2a39ddd8442" options-hash="blake3:674c56f2d8921cd7a661f8ad8350b0858a6f27eff7b821fc568bfd389a844d3b"
-    }
-
     output "generated/flake.nix" {
-        hash "blake3:44d088ed09a4c55547ae476af5678ac1c991dce8613dd5c21c6c98faf577f264"
+        hash "blake3:f96b9ca593a8c435929f8e342b4eee8084340f73a17626bd3b1ecfe166709036"
         from "knixl.kdl"
         modules
     }
 
     output "generated/hosts/fw13.nix" {
-        hash "blake3:a3b8e85882a630dbaa4725c79db5b5544048f5f435673ebd765cdba4804af6d5"
+        hash "blake3:a956ab3c3d18f47611d089f8c21dfba4b546ed0a5ab229436c2ac3d56165ed82"
         from "hosts/fw13.kdl"
-        modules "base" "desktop" "disko" "home-manager" "host" "import" "nix-ld" "os" "package" "raw-nix" "tailscale" "user"
-    }
-
-    output "generated/hosts/vm-gnome.nix" {
-        hash "blake3:e4a40282a4d3714f27f0f27cb7b8916cc1a428ee6fee43a36b44761036eef1e7"
-        from "hosts/vm-gnome.kdl"
-        modules "base" "desktop" "host" "os" "package" "user" "vm-guest"
+        modules "base" "desktop" "disko" "home-manager" "host" "import" "nix-ld" "os" "package" "raw-nix" "tailscale" "user" "vm-guest"
     }
 }

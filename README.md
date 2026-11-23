@@ -9,10 +9,9 @@ knixl.kdl              project: flake inputs, and the disko/home-manager modules
 knixl.lock.kdl         knixl's lock: tool, modules, nixpkgs baseline, input revs
 mise.toml              the knixl version, the vm tasks and the install task
 hosts/fw13.kdl         the laptop
-hosts/vm-gnome.kdl     a throwaway VM with the same desktop
 modules/base/          local module: keyboard, networking, audio, power, firmware, printing
 modules/desktop/       local module: the DE selector
-modules/vm-guest/      local module: QEMU guest agents, build-vm sizing, a VM password
+modules/vm-guest/      local module: fw13's VM-only settings (sizing, login, shared repo)
 home/default.nix       wes's login shell (zsh), and the import of home/wes.nix
 home/wes.nix           home-manager config: zsh, git, gpg-agent, Vicinae, dconf, packages
 home/files/            dotfiles: ~/bin, nvim-ai, wezterm, starship, mise
@@ -49,25 +48,29 @@ wifi or GPU firmware and no microcode). The 13-inch common module also pulls in
 the classic chassis speaker tuning; it's off by default and not tuned for the Pro,
 so leave `hardware.framework.laptop13.audioEnhancement` alone.
 
-**Note**: the project set applies to every host, so the VMs import the disko and
-home-manager modules too. Both are inert without config.
-
-## Testing the desktop
+## Testing in a VM
 
 ```sh
 mise run vm
 ```
 
-That regenerates from the KDL, builds the GNOME VM into `result-vm-gnome` and boots
-it in a window. You're logged in as `wes` automatically; the password is also
-`wes`, for when the idle lock screen kicks in. 8GB, 4 cores.
+That regenerates from the KDL, builds fw13 itself as a QEMU VM into `result-vm` and
+boots it in a window, so what you test is the laptop's config, home-manager and all.
+Everything VM-only sits in fw13's `vm-guest` node, which only sets
+`virtualisation.vmVariant`, so none of it reaches the laptop: you're logged in as
+`wes` automatically, the password is `wes` (for the idle lock screen), 8GB, 4 cores.
+The checkout is mounted at `~/projects/laptop` over 9p, so the out-of-store links
+into `home/files/` resolve, and edits there land in your real checkout.
+
+The VM build drops disko's disk layout and LUKS, and boots the kernel directly, so
+the install path, the bootloader and the hardware itself still need the metal.
 
 The disk is a fresh temp image every run and is deleted when the VM exits, so
 nothing persists between runs. `mise run vm:build` does the first two steps
 without booting.
 
-The Plasma and COSMIC VMs, and fw13's Plasma boot entry, went once GNOME was
-settled on. `modules/desktop/` still has their flags, so trying one again is a
+The Plasma, COSMIC and GNOME VM hosts, and fw13's Plasma boot entry, went once GNOME
+was settled on. `modules/desktop/` still has their flags, so trying one again is a
 host file away.
 
 ## Home
@@ -111,9 +114,14 @@ and nothing more.
 
 Enrol with `sudo oneleet-cli login --enrollment-token-stdin`.
 
-**Note**: tell IT before relying on it. Its software inventory reads dpkg or rpm, so
-it will come back empty; remote install and wipe tasks won't work; and Oneleet may
-flag NixOS as unsupported. If the self-updater replaces `/opt/Oneleet` with a
+Its software inventory comes from `dpkg-query`, so the module links a stub at
+`/usr/bin/dpkg-query` (where the daemon looks first, and off NixOS's PATH) that lists
+the system's and home-manager's packages, built at evaluation time, in the format
+the daemon asks for.
+
+**Note**: tell IT before relying on it. Remote install and wipe tasks won't work, the
+inventory lists Nix package names rather than Debian ones, and Oneleet may flag
+NixOS as unsupported. If the self-updater replaces `/opt/Oneleet` with a
 directory, the tmpfiles rule puts the store link back at the next boot.
 
 ## From nixpkgs-unstable
@@ -183,21 +191,24 @@ Worth filing against knixl itself rather than working around forever:
 4. **No mutual exclusion in schemas.** Nothing stops `desktop { gnome; plasma }`,
    and knixl generates it happily; you only find out from the NixOS eval conflict.
    A `one-of` schema constraint would catch it at generate time.
-5. **No cross-host sharing.** Host files are standalone, which is why `base` exists
-   as a module, and the two hosts still repeat the same `os` and `base` blocks.
-   `base` now only carries what `os` doesn't (keymap, unfree, networkmanager,
-   pipewire, power, fwupd, printing).
-6. **home-manager interiors are unchecked.** Since knixl 1.5.0 the oracle lets
+5. **home-manager interiors are unchecked.** Since knixl 1.5.0 the oracle lets
    anything under `home-manager.users.<name>` through without checking it (before
    that it rejected all of it), because the NixOS options don't describe
    home-manager's per-user options.
 
 ## Verification status
 
+Checked, with knixl 1.7.0, after replacing vm-gnome with fw13's own VM:
+
+- `knixl check` is clean; fw13 and its `system.build.vm` evaluate, and the VM-only
+  settings (password, autologin, guest agents) are absent from fw13 itself.
+- The `dpkg-query` stub lists 296 packages, answers for one name, and exits 1 for
+  an unknown one. The VM hasn't been booted.
+
 Checked, with knixl 1.7.0, after adding Oneleet and the GNOME extensions and
 dropping the Plasma and COSMIC hosts:
 
-- `knixl check` is clean, fw13 evaluates, and vm-gnome's toplevel derivation is
+- `knixl check` is clean, fw13 evaluates, and vm-gnome's toplevel derivation was
   unchanged.
 - oneleet 2.5.0 builds, and its binaries resolve every library.
 
