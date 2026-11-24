@@ -157,7 +157,7 @@ reboot`.
 
 ## Loop
 
-knixl itself is pinned in `mise.toml` (1.11.0, from the GitHub release, whose build
+knixl itself is pinned in `mise.toml` (1.11.1, from the GitHub release, whose build
 provenance mise verifies on install), so `mise install` in this directory gets the
 version the lock was written with.
 
