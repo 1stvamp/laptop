@@ -1,5 +1,5 @@
 [tools]
-"github:1stvamp/knixl" = "1.11.1"
+"github:1stvamp/knixl" = "1.11.2"
 
 [tasks."vm:build"]
 description = "Regenerate from KDL and build fw13 as a QEMU VM"

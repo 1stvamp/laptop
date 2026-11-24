@@ -1,5 +1,5 @@
 lock version=1 {
-    tool version="1.11.1"
+    tool version="1.11.2"
     formatter name="nixfmt-rfc-style" version="1.3.1"
     oracle nixpkgs-rev="" options-hash="" {
         oracle-module name="disko" url="https://github.com/nix-community/disko" rev="44761d4f745b95e037458a0e57133c5700c8e320" attr="disko"
@@ -51,7 +51,7 @@ lock version=1 {
     }
 
     output "generated/hosts/fw13.nix" {
-        hash "blake3:6e4620622cf07105fe67010ce9e28eaa8005e93e2ec2c458ff38768af5f967a8"
+        hash "blake3:f7a247ddba4dd04fedf88ccc31fe9090fce0d55e7ded02de46dd32280318c756"
         from "hosts/fw13.kdl"
         modules "base" "desktop" "disko" "firewall" "home-manager" "host" "import" "nix-ld" "os" "package" "raw-nix" "tailscale" "user" "vm-guest"
     }
