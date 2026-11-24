@@ -1,6 +1,6 @@
 lock version=1 {
     tool version="1.11.2"
-    formatter name="nixfmt-rfc-style" version="1.3.1"
+    formatter name="nixfmt-rfc-style" version="1.5.0"
     oracle nixpkgs-rev="" options-hash="" {
         oracle-module name="disko" url="https://github.com/nix-community/disko" rev="44761d4f745b95e037458a0e57133c5700c8e320" attr="disko"
         oracle-module name="home-manager" url="https://github.com/nix-community/home-manager" rev="a6631107a83ceab5872f298a2ea710859c80c4cb" attr="home-manager"
@@ -37,7 +37,7 @@ lock version=1 {
     module "zfs" version="1.0.0"
 
     host "fw13" {
-        baseline release="26.05" nixpkgs-rev="cf5e76507c6e23b59f7e0ffcc7baa2a39ddd8442" options-hash="blake3:520faaeee13214e380d15e4f29d329d9fb6879bf62fc513d8aec54335bbcf8f8" {
+        baseline release="26.05" nixpkgs-rev="0dc498bfe49baeb18b0f9891e800b53bb2603193" options-hash="blake3:4e31b9dd2028434b1528a02b636ec9a014cfe83dd6caea81f474a67e7237ff20" {
             oracle-module name="nixos-hardware" url="https://github.com/NixOS/nixos-hardware" rev="33475966110df258f52d05ec4d4cd6394637cbb9" attr="framework-intel-core-ultra-series3"
             oracle-module name="disko" url="https://github.com/nix-community/disko" rev="44761d4f745b95e037458a0e57133c5700c8e320" attr="disko"
             oracle-module name="home-manager" url="https://github.com/nix-community/home-manager" rev="a6631107a83ceab5872f298a2ea710859c80c4cb" attr="home-manager"
@@ -45,7 +45,7 @@ lock version=1 {
     }
 
     output "generated/flake.nix" {
-        hash "blake3:f96b9ca593a8c435929f8e342b4eee8084340f73a17626bd3b1ecfe166709036"
+        hash "blake3:3456ec50921d7dc17c149dbf4a58bfc8e758ffa3ce4ae11b27f04f7e63f727ee"
         from "knixl.kdl"
         modules
     }

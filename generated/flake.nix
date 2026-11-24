@@ -15,7 +15,7 @@
       inputs."nixpkgs".follows = "nixpkgs";
     };
     "nixpkgs" = {
-      url = "github:NixOS/nixpkgs/cf5e76507c6e23b59f7e0ffcc7baa2a39ddd8442";
+      url = "github:NixOS/nixpkgs/0dc498bfe49baeb18b0f9891e800b53bb2603193";
     };
     "nixpkgs-unstable" = {
       url = "github:NixOS/nixpkgs/2786a2a72088ecf32aea5b3ec52099e6a7cff78f";
