@@ -186,8 +186,9 @@ PR is the update.
 
 When the PR is new or its refresh has moved and it fixes CVEs, the job posts to ntfy,
 at priority 5 when the worst CVE fixed scores 9 or more, 4 for 7 or more, otherwise 3.
-Plain upgrades only update the PR. It needs two repo secrets: `NTFY_URL` (server
-and topic) and `NTFY_TOKEN`.
+Plain upgrades only update the PR. It needs the repo secret `NTFY_URL` (server
+and topic); `NTFY_TOKEN` is optional, and without it the topic's name is the only
+thing keeping it private, so make it long and random.
 
 vulnix matches CVEs by package name and version, so it can't see the repackaged debs
 (`bump.yml` covers those) and only knows about nixpkgs: other flake inputs, e.g.

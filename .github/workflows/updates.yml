@@ -166,15 +166,18 @@ jobs:
           if [ "$FIXES" -eq 0 ]; then
             exit 0
           fi
-          if [ -z "$NTFY_URL" ] || [ -z "$NTFY_TOKEN" ]; then
-            echo "NTFY_URL and NTFY_TOKEN secrets are required to notify" >&2
+          if [ -z "$NTFY_URL" ]; then
+            echo "the NTFY_URL secret is required to notify" >&2
             exit 1
           fi
+          # Without a token the topic's unguessable name is the only access control.
+          auth=()
+          if [ -n "$NTFY_TOKEN" ]; then auth=(-H "Authorization: Bearer $NTFY_TOKEN"); fi
           priority="$(awk -v s="$MAX_SCORE" 'BEGIN { print (s >= 9 ? 5 : s >= 7 ? 4 : 3) }')"
           tags=shield
           if [ "$priority" -eq 5 ]; then tags=rotating_light; fi
           curl -fsS -o /dev/null \
-            -H "Authorization: Bearer $NTFY_TOKEN" \
+            "${auth[@]}" \
             -H "Title: fw13: $FIXES CVEs fixed in $PACKAGES packages" \
             -H "Priority: $priority" \
             -H "Tags: $tags" \
