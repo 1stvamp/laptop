@@ -157,7 +157,7 @@ reboot`.
 
 ## Loop
 
-knixl itself is pinned in `mise.toml` (1.10.0, from the GitHub release, whose build
+knixl itself is pinned in `mise.toml` (1.11.0, from the GitHub release, whose build
 provenance mise verifies on install), so `mise install` in this directory gets the
 version the lock was written with.
 
@@ -175,6 +175,23 @@ a git flake nix only sees tracked files.
 
 Overrides go at the KDL layer, in `raw-nix`, or in a hand-written module pulled in
 with a host `import "<path>"`. Never in `generated/`.
+
+## Updates
+
+`.github/workflows/updates.yml` runs daily: `knixl updates` reports what a nixpkgs
+refresh would change for fw13 (version bumps, and the CVEs vulnix says it fixes),
+then the job applies the refresh and opens or updates a PR on `chore/nixpkgs-refresh`
+with the report as its body, labelled `security` when it fixes any CVEs. Merging the
+PR is the update.
+
+When the PR is new or its refresh has moved and it fixes CVEs, the job posts to ntfy,
+at priority 5 when the worst CVE fixed scores 9 or more, 4 for 7 or more, otherwise 3.
+Plain upgrades only update the PR. It needs two repo secrets: `NTFY_URL` (server
+and topic) and `NTFY_TOKEN`.
+
+vulnix matches CVEs by package name and version, so it can't see the repackaged debs
+(`bump.yml` covers those) and only knows about nixpkgs: other flake inputs, e.g.
+home-manager, aren't refreshed or reported.
 
 ## Known gaps, in rough priority order
 
@@ -271,6 +288,9 @@ Not checked:
 - `mise run install`, end to end.
 - Claude desktop on NixOS: its window, the Code tab under nix-ld, and Cowork's VM.
   `bump.yml` hasn't run either.
+- `updates.yml` hasn't run in CI. Locally, `knixl updates` reported 225 version
+  changes and 408 CVEs fixed in 18 packages, and the refreshed fw13 passes `knixl check`
+  and evaluates.
 - Oneleet on NixOS: enrolment, the daemon's checks, the tray app and what the
   self-updater does to `/opt/Oneleet`.
 - The GNOME extensions (Dash to Dock, AppIndicator, Tiling Shell, Vitals, GSConnect,

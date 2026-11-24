@@ -1,0 +1,183 @@
+# Daily nixpkgs refresh for fw13. When the channel has moved it opens (or refreshes) a PR
+# with the refresh applied and `knixl updates`' report as its body, and when that PR is
+# new or changed and fixes CVEs, it notifies ntfy. Plain upgrades only update the PR.
+name: updates
+
+on:
+  schedule:
+    - cron: "43 6 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: updates
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      BRANCH: chore/nixpkgs-refresh
+    # Pinned by SHA, and the token reaches only the PR step: this job can push.
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - uses: cachix/install-nix-action@3dc140bfc76c49fbd4dd958429132e3746bcb086 # v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      # vulnix's NVD database; a fresh key each run so the newest copy is saved.
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/vulnix
+          key: vulnix-${{ github.run_id }}
+          restore-keys: vulnix-
+
+      # Both from the flake's current nixpkgs, as in check.yml.
+      - name: Install the formatter and vulnix
+        run: |
+          set -euo pipefail
+          fmt="$(nix build --no-link --print-out-paths \
+            './generated#nixosConfigurations.fw13.pkgs.nixfmt-rfc-style')"
+          echo "$fmt/bin" >> "$GITHUB_PATH"
+          vulnix="$(nix build --no-link --print-out-paths \
+            './generated#nixosConfigurations.fw13.pkgs.vulnix^out')"
+          echo "KNIXL_VULNIX=$vulnix/bin/vulnix" >> "$GITHUB_ENV"
+
+      - name: Install knixl
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^ *tool version="\([^"]*\)".*/\1/p' knixl.lock.kdl)"
+          if ! printf '%s' "$version" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "tool version '$version' in knixl.lock.kdl is not a plain semver tag" >&2
+            exit 1
+          fi
+          tarball=knixl-x86_64-unknown-linux-gnu.tar.xz
+          base="https://github.com/1stvamp/knixl/releases/download/v${version}"
+          work="$(mktemp -d)"
+          curl -fsSL -o "$work/$tarball" "$base/$tarball"
+          curl -fsSL -o "$work/$tarball.sha256" "$base/$tarball.sha256"
+          ( cd "$work" && sha256sum -c "$tarball.sha256" )
+          tar -xf "$work/$tarball" -C "$work"
+          sudo install -m755 "$work/knixl-x86_64-unknown-linux-gnu/knixl" /usr/local/bin/knixl
+          knixl --version
+
+      # The report is package versions and public CVE ids, so it's fine in public logs.
+      - name: Report what a refresh would change
+        id: report
+        run: |
+          set -euo pipefail
+          knixl --json updates > "$RUNNER_TEMP/report.json"
+          knixl updates > "$RUNNER_TEMP/report.md"
+          cat "$RUNNER_TEMP/report.md" >> "$GITHUB_STEP_SUMMARY"
+          jq -r '
+            [.hosts[].security.fixed[]?] as $fixed
+            | "fixes=\(.security_fixes)",
+              "packages=\($fixed | map(.package) | unique | length)",
+              "max_score=\([$fixed[].cves[].score] | max // 0)"
+          ' "$RUNNER_TEMP/report.json" >> "$GITHUB_OUTPUT"
+
+      # check.yml doesn't run on a PR opened with GITHUB_TOKEN, so check and evaluate here.
+      - name: Refresh nixpkgs
+        id: refresh
+        run: |
+          set -euo pipefail
+          knixl upgrade --refresh --yes
+          knixl generate
+          git add generated knixl.lock.kdl
+          ( cd generated && nix flake lock )
+          knixl check
+          for build in toplevel vm; do
+            nix eval --raw "./generated#nixosConfigurations.fw13.config.system.build.${build}.drvPath"
+            printf '\n'
+          done
+          if git diff --quiet HEAD -- generated knixl.lock.kdl; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # operation is "none" when an open PR already carries this refresh, so ntfy hears
+      # about each channel move once.
+      - name: Open or refresh the PR
+        id: pr
+        if: steps.refresh.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FIXES: ${{ steps.report.outputs.fixes }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          gh auth setup-git
+          title="chore(fw13): refresh nixpkgs"
+          git switch -C "$BRANCH"
+          git commit -q -m "$title" -- generated knixl.lock.kdl
+          state="$(gh pr view "$BRANCH" --json state --jq .state 2>/dev/null || true)"
+          if [ "$state" = "OPEN" ] && git fetch -q origin "$BRANCH" \
+              && git diff --quiet FETCH_HEAD HEAD -- generated knixl.lock.kdl; then
+            echo "operation=none" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git push --force origin "$BRANCH"
+          body="$RUNNER_TEMP/body.md"
+          # PR bodies cap at 65536 characters; the full report is in the run summary.
+          if [ "$(wc -c < "$RUNNER_TEMP/report.md")" -gt 60000 ]; then
+            { head -c 60000 "$RUNNER_TEMP/report.md"
+              printf '\n\n(truncated; the full report is in [the workflow run](%s))\n' "$RUN_URL"
+            } > "$body"
+          else
+            cp "$RUNNER_TEMP/report.md" "$body"
+          fi
+          if [ "$state" = "OPEN" ]; then
+            gh pr edit "$BRANCH" --title "$title" --body-file "$body"
+            echo "operation=updated" >> "$GITHUB_OUTPUT"
+          else
+            gh pr create --head "$BRANCH" --title "$title" --body-file "$body"
+            echo "operation=created" >> "$GITHUB_OUTPUT"
+          fi
+          gh label create security --color d73a4a --description "Fixes CVEs" --force
+          if [ "$FIXES" -gt 0 ]; then
+            gh pr edit "$BRANCH" --add-label security
+          else
+            gh pr edit "$BRANCH" --remove-label security
+          fi
+          echo "url=$(gh pr view "$BRANCH" --json url --jq .url)" >> "$GITHUB_OUTPUT"
+
+      - name: Notify ntfy
+        if: steps.pr.outputs.operation == 'created' || steps.pr.outputs.operation == 'updated'
+        env:
+          NTFY_URL: ${{ secrets.NTFY_URL }}
+          NTFY_TOKEN: ${{ secrets.NTFY_TOKEN }}
+          FIXES: ${{ steps.report.outputs.fixes }}
+          PACKAGES: ${{ steps.report.outputs.packages }}
+          MAX_SCORE: ${{ steps.report.outputs.max_score }}
+          PR_URL: ${{ steps.pr.outputs.url }}
+        run: |
+          set -euo pipefail
+          if [ "$FIXES" -eq 0 ]; then
+            exit 0
+          fi
+          if [ -z "$NTFY_URL" ] || [ -z "$NTFY_TOKEN" ]; then
+            echo "NTFY_URL and NTFY_TOKEN secrets are required to notify" >&2
+            exit 1
+          fi
+          priority="$(awk -v s="$MAX_SCORE" 'BEGIN { print (s >= 9 ? 5 : s >= 7 ? 4 : 3) }')"
+          tags=shield
+          if [ "$priority" -eq 5 ]; then tags=rotating_light; fi
+          curl -fsS -o /dev/null \
+            -H "Authorization: Bearer $NTFY_TOKEN" \
+            -H "Title: fw13: $FIXES CVEs fixed in $PACKAGES packages" \
+            -H "Priority: $priority" \
+            -H "Tags: $tags" \
+            -H "Click: $PR_URL" \
+            -d "Highest CVSS fixed: $MAX_SCORE. Merge the nixpkgs refresh: $PR_URL" \
+            "$NTFY_URL"
