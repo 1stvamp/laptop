@@ -124,7 +124,6 @@ host "fw13" {
     package "jq"
     package "neovim"       // runtime only; keep the nvim-ai lua config unmanaged
     package "qemu_kvm"
-    package "cloud-hypervisor"
     package "firecracker"
     package "google-chrome"
     package "firefox"
@@ -179,6 +178,16 @@ host "fw13" {
           enable = true;
           package = pkgs.gnomeExtensions.gsconnect;
         };
+
+        # GNOME defaults that aren't wanted. nautilus and gnome-control-center link
+        # gnome-user-share (apache-httpd) and gnome-remote-desktop (freerdp), so those
+        # packages stay in the closure; this stops them running.
+        environment.gnome.excludePackages = with pkgs; [ gnome-maps gnome-connections ];
+        services.gnome.gnome-user-share.enable = false;
+        services.gnome.gnome-remote-desktop.enable = false;
+        programs.nano.enable = false;
+        # libvirtd always ships the cloud-hypervisor driver's daemon; QEMU is the one in use.
+        systemd.services.virtchd.enable = false;
         """#
     }
 }

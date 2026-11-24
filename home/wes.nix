@@ -366,7 +366,6 @@ in
     kubectx
     k9s
     kubernetes-helm
-    opentofu
     awscli2
     granted
     flyctl

@@ -155,7 +155,6 @@ in
     pkgs.jq
     pkgs.neovim
     pkgs.qemu_kvm
-    pkgs.cloud-hypervisor
     pkgs.firecracker
     pkgs.google-chrome
     pkgs.firefox
@@ -208,4 +207,17 @@ in
     enable = true;
     package = pkgs.gnomeExtensions.gsconnect;
   };
+
+  # GNOME defaults that aren't wanted. nautilus and gnome-control-center link
+  # gnome-user-share (apache-httpd) and gnome-remote-desktop (freerdp), so those
+  # packages stay in the closure; this stops them running.
+  environment.gnome.excludePackages = with pkgs; [
+    gnome-maps
+    gnome-connections
+  ];
+  services.gnome.gnome-user-share.enable = false;
+  services.gnome.gnome-remote-desktop.enable = false;
+  programs.nano.enable = false;
+  # libvirtd always ships the cloud-hypervisor driver's daemon; QEMU is the one in use.
+  systemd.services.virtchd.enable = false;
 }
