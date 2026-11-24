@@ -1,5 +1,5 @@
 lock version=1 {
-    tool version="1.8.0"
+    tool version="1.10.0"
     formatter name="nixfmt-rfc-style" version="1.3.1"
     oracle nixpkgs-rev="" options-hash="" {
         oracle-module name="disko" url="https://github.com/nix-community/disko" rev="44761d4f745b95e037458a0e57133c5700c8e320" attr="disko"
@@ -11,7 +11,7 @@ lock version=1 {
     flake-input "nixos-hardware" url="github:NixOS/nixos-hardware" rev="33475966110df258f52d05ec4d4cd6394637cbb9"
     flake-input "nixpkgs-unstable" url="github:NixOS/nixpkgs" rev="2786a2a72088ecf32aea5b3ec52099e6a7cff78f"
 
-    input "hosts/fw13.kdl" hash="blake3:d2c2ac5f4bf27cfc484b3eae680c878df79c497186c688fb00a8c2ebbc28b6c6"
+    input "hosts/fw13.kdl" hash="blake3:221aa43d6492f09f8e3f8b6df21e171f3db50ee5fb47c94d4f08786f2ba6e711"
 
     module "backups" version="0.2.1"
     module "base" version="2.0.0"
@@ -32,7 +32,7 @@ lock version=1 {
     module "security-headers" version="1.0.0"
     module "tailscale" version="1.0.0"
     module "user" version="1.0.0"
-    module "vm-guest" version="2.0.0"
+    module "vm-guest" version="3.0.0"
     module "web-service" version="1.2.0"
     module "zfs" version="1.0.0"
 
@@ -51,7 +51,7 @@ lock version=1 {
     }
 
     output "generated/hosts/fw13.nix" {
-        hash "blake3:a9acb0ac6158a5527977942222636379f13988c3e2b899e58eec59a20a1fb2db"
+        hash "blake3:37313f5484e1759890c478f15014e2812d94d0ac0544f0b5d6e582b79c2760c1"
         from "hosts/fw13.kdl"
         modules "base" "desktop" "disko" "firewall" "home-manager" "host" "import" "nix-ld" "os" "package" "raw-nix" "tailscale" "user" "vm-guest"
     }

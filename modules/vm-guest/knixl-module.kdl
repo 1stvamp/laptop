@@ -1,7 +1,7 @@
 // Every setting goes under virtualisation.vmVariant, so it only applies to the
 // build-vm output and is inert on real hardware.
 
-module name="vm-guest" version="2.0.0" {
+module name="vm-guest" version="3.0.0" {
     summary "build-vm sizing, guest agents, a login and a shared folder, for testing a host in QEMU."
     claims-node "vm-guest"
 
@@ -24,7 +24,7 @@ module name="vm-guest" version="2.0.0" {
             arg "user" type="string" required=#true
         }
         child "share" repeated=#true \
-            doc="A host directory mounted in the VM over 9p. source is expanded by the run script's shell, so it can name an environment variable." {
+            doc="A host directory shown at target copy-on-write: a read-only 9p mount at /mnt/shares/<tag> with an overlay on the VM's disk, so the VM never writes to the host. source is expanded by the run script's shell, so it can name an environment variable." {
             arg "tag" type="string" required=#true
             prop "source" type="string" required=#true
             prop "target" type="string" required=#true
@@ -52,7 +52,27 @@ module name="vm-guest" version="2.0.0" {
         }
         for-each "s" in "share" {
             set "virtualisation.vmVariant.virtualisation.sharedDirectories.{s.tag}.source" "{s.source}"
-            set "virtualisation.vmVariant.virtualisation.sharedDirectories.{s.tag}.target" "{s.target}"
+            set "virtualisation.vmVariant.virtualisation.sharedDirectories.{s.tag}.target" "/mnt/shares/{s.tag}"
+            set "virtualisation.vmVariant.virtualisation.fileSystems.\"/mnt/shares/{s.tag}\".options" (list)"ro"
+            // Under virtualisation.fileSystems: qemu-vm replaces fileSystems wholesale.
+            set "virtualisation.vmVariant.virtualisation.fileSystems.\"{s.target}\".overlay.lowerdir" (list)"/mnt/shares/{s.tag}"
+            set "virtualisation.vmVariant.virtualisation.fileSystems.\"{s.target}\".overlay.upperdir" "/var/lib/vm-shares/{s.tag}/upper"
+            set "virtualisation.vmVariant.virtualisation.fileSystems.\"{s.target}\".overlay.workdir" "/var/lib/vm-shares/{s.tag}/work"
+            set "virtualisation.vmVariant.virtualisation.fileSystems.\"{s.target}\".options" (list)"x-systemd.requires=vm-share-dirs-{s.tag}.service"
+            // The merged root takes its owner from the upperdir, so give that (and a new
+            // mountpoint parent) the share's owner before mounting.
+            set "virtualisation.vmVariant.systemd.services.\"vm-share-dirs-{s.tag}\".unitConfig.DefaultDependencies" #false
+            set "virtualisation.vmVariant.systemd.services.\"vm-share-dirs-{s.tag}\".unitConfig.RequiresMountsFor" "/mnt/shares/{s.tag}"
+            set "virtualisation.vmVariant.systemd.services.\"vm-share-dirs-{s.tag}\".serviceConfig.Type" "oneshot"
+            set "virtualisation.vmVariant.systemd.services.\"vm-share-dirs-{s.tag}\".script" (indent-str)#"""
+                mkdir -p /var/lib/vm-shares/{s.tag}/upper /var/lib/vm-shares/{s.tag}/work
+                chown --reference=/mnt/shares/{s.tag} /var/lib/vm-shares/{s.tag}/upper
+                parent="$(dirname "{s.target}")"
+                if [ ! -d "$parent" ]; then
+                  mkdir -p "$parent"
+                  chown --reference=/mnt/shares/{s.tag} "$parent"
+                fi
+                """#
         }
         when-flag "guest-agent" {
             set "virtualisation.vmVariant.services.qemuGuest.enable" #true

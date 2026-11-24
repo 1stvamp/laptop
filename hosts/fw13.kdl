@@ -67,7 +67,8 @@ host "fw13" {
         disk-mb 16384
         initial-password "wes" password="wes"
         autologin "wes"
-        // The checkout, so home/files' out-of-store links resolve. mise sets LAPTOP_REPO.
+        // The checkout, copy-on-write, so home/files' out-of-store links resolve without
+        // the VM editing the repo. mise sets LAPTOP_REPO.
         share "laptop" source="\"$LAPTOP_REPO\"" target="/home/wes/projects/laptop"
         guest-agent
         spice

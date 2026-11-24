@@ -59,8 +59,10 @@ boots it in a window, so what you test is the laptop's config, home-manager and 
 Everything VM-only sits in fw13's `vm-guest` node, which only sets
 `virtualisation.vmVariant`, so none of it reaches the laptop: you're logged in as
 `wes` automatically, the password is `wes` (for the idle lock screen), 8GB, 4 cores.
-The checkout is mounted at `~/projects/laptop` over 9p, so the out-of-store links
-into `home/files/` resolve, and edits there land in your real checkout.
+The checkout is shared read-only over 9p and overlaid copy-on-write at
+`~/projects/laptop`, so the out-of-store links into `home/files/` resolve, and
+anything the VM changes there (lazy.nvim's lock file, say) stays on its throwaway
+disk. `vm-guest`'s `share` sets that up for any share.
 
 The VM build drops disko's disk layout and LUKS, and boots the kernel directly, so
 the install path, the bootloader and the hardware itself still need the metal.
@@ -155,7 +157,7 @@ reboot`.
 
 ## Loop
 
-knixl itself is pinned in `mise.toml` (1.8.0, from the GitHub release, whose build
+knixl itself is pinned in `mise.toml` (1.10.0, from the GitHub release, whose build
 provenance mise verifies on install), so `mise install` in this directory gets the
 version the lock was written with.
 
@@ -197,6 +199,10 @@ Worth filing against knixl itself rather than working around forever:
    home-manager's per-user options.
 
 ## Verification status
+
+Checked in fw13's VM, after making the checkout copy-on-write (first in raw-nix,
+then in `vm-guest` with knixl 1.10.0's `(list)`): the share is a read-only 9p mount, `~/projects/laptop` is an overlay owned by wes, and writing,
+appending and creating files there leaves the real checkout untouched.
 
 Checked in fw13's VM (`mise run vm`, booted headless), after swapping Mailspring for
 Thunderbird and adding `hide-vicinae-from-dock`:
