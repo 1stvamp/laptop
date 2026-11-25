@@ -1,8 +1,4 @@
--- ~/.config/nvim-ai/init.lua
--- Isolated AI-focused Neovim config. Launch with:
---   NVIM_APPNAME=nvim-ai neovide
---   NVIM_APPNAME=nvim-ai nvim
--- Your classic ~/.vimrc and ~/.config/nvim stay untouched.
+-- ~/.config/nvim/init.lua
 -- Requires Neovim 0.11+ (for vim.lsp.config / vim.lsp.enable).
 
 -- NOTE: leader is Space here. Your old config used the default leader (\).
