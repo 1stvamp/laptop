@@ -25,7 +25,6 @@ let
 in
 {
   home.sessionVariables = {
-    NVIM_APPNAME = "nvim-ai";
     # Serena's TS language server is slow to warm up in the big monorepos.
     MCP_TIMEOUT = "60000";
     TRIGGERDOTDEV_REPOS_PATH = "${config.home.homeDirectory}/projects/trigger";
@@ -43,7 +42,7 @@ in
   ];
 
   home.file."bin".source = live "bin";
-  xdg.configFile."nvim-ai".source = live "nvim-ai";
+  xdg.configFile."nvim".source = live "nvim";
   xdg.configFile."wezterm/wezterm.lua".source = live "wezterm.lua";
   xdg.configFile."starship.toml".source = live "starship/starship.toml";
   xdg.configFile."starship/gitbutler-branch.sh".source = live "starship/gitbutler-branch.sh";
@@ -95,8 +94,6 @@ in
       open-pr = "gh pr view --web";
       assume = ". assume";
       "1p" = "1password --quick-access &>/dev/null";
-      vim = "nvim";
-      vi = "nvim";
       c = ''claude --system-prompt="$(serena prompts print-cc-system-prompt-override)"'';
       cr = "c -r";
       cc = "c -c";

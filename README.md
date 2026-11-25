@@ -14,7 +14,7 @@ modules/desktop/       local module: the DE selector
 modules/vm-guest/      local module: fw13's VM-only settings (sizing, login, shared repo)
 home/default.nix       wes's login shell (zsh), and the import of home/wes.nix
 home/wes.nix           home-manager config: zsh, git, gpg-agent, Vicinae, dconf, packages
-home/files/            dotfiles: ~/bin, nvim-ai, wezterm, starship, mise, a GNOME extension
+home/files/            dotfiles: ~/bin, nvim, wezterm, starship, mise, a GNOME extension
 pkgs/claude-desktop/   Claude desktop from Anthropic's .deb, and its bump script
 pkgs/oneleet/          Oneleet's compliance agent from its .deb, and its bump script
 generated/             knixl output (flake.nix, hosts/*.nix), never hand-edited
@@ -83,7 +83,7 @@ that's all, so fw13 lists the programs there and everything else lives in
 files. It comes in through fw13's `import "../home"` node.
 
 The files under `home/files/` are linked into place as out-of-store symlinks
-(`~/bin`, `~/.config/nvim-ai`, wezterm, starship, mise), the way the Dropbox links
+(`~/bin`, `~/.config/nvim`, wezterm, starship, mise), the way the Dropbox links
 worked, so editing them in place works without a rebuild. That only holds while
 the repo is checked out at `~/projects/laptop`.
 

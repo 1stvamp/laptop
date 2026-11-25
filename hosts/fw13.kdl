@@ -104,7 +104,6 @@ host "fw13" {
 
     // Program settings, packages, files and dconf are in home/wes.nix.
     home-manager "wes" state-version="26.05" {
-        session-var "EDITOR" "nvim"
         session-var "PAGER" "less"
         program "git"
         program "zsh"
@@ -122,7 +121,6 @@ host "fw13" {
     package "ripgrep"
     package "fd"
     package "jq"
-    package "neovim"       // runtime only; keep the nvim-ai lua config unmanaged
     package "qemu_kvm"
     package "firecracker"
     package "google-chrome"
@@ -188,6 +186,14 @@ host "fw13" {
         programs.nano.enable = false;
         # libvirtd always ships the cloud-hypervisor driver's daemon; QEMU is the one in use.
         systemd.services.virtchd.enable = false;
+        # No knixl node for this. Neovim replaces vi/vim system-wide (root included) and
+        # is the default EDITOR; its config is wes's own ~/.config/nvim (home/files/nvim).
+        programs.neovim = {
+          enable = true;
+          defaultEditor = true;
+          viAlias = true;
+          vimAlias = true;
+        };
         """#
     }
 }

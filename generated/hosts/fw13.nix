@@ -136,7 +136,6 @@ in
   home-manager.useUserPackages = true;
   home-manager.useGlobalPkgs = true;
   home-manager.users."wes".home.stateVersion = "26.05";
-  home-manager.users."wes".home.sessionVariables."EDITOR" = "nvim";
   home-manager.users."wes".home.sessionVariables."PAGER" = "less";
   home-manager.users."wes".programs."git".enable = true;
   home-manager.users."wes".programs."zsh".enable = true;
@@ -153,7 +152,6 @@ in
     pkgs.ripgrep
     pkgs.fd
     pkgs.jq
-    pkgs.neovim
     pkgs.qemu_kvm
     pkgs.firecracker
     pkgs.google-chrome
@@ -220,4 +218,12 @@ in
   programs.nano.enable = false;
   # libvirtd always ships the cloud-hypervisor driver's daemon; QEMU is the one in use.
   systemd.services.virtchd.enable = false;
+  # No knixl node for this. Neovim replaces vi/vim system-wide (root included) and
+  # is the default EDITOR; its config is wes's own ~/.config/nvim (home/files/nvim).
+  programs.neovim = {
+    enable = true;
+    defaultEditor = true;
+    viAlias = true;
+    vimAlias = true;
+  };
 }
