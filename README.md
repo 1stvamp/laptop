@@ -159,7 +159,9 @@ reboot`.
 
 knixl itself is pinned in `mise.toml` (1.11.2, from the GitHub release, whose build
 provenance mise verifies on install), so `mise install` in this directory gets the
-version the lock was written with.
+version the lock was written with. nixfmt is pinned there too, at the version the
+lock records, so when a nixpkgs refresh moves nixfmt the pin needs the same bump or
+`knixl check` reports version skew.
 
 - `knixl plan` : what would change, writes nothing.
 - `knixl generate` : apply. Refuses hand-edited generated files without `--accept-drift`.
