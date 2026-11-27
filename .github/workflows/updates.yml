@@ -98,10 +98,22 @@ jobs:
             nix eval --raw "./generated#nixosConfigurations.fw13.config.system.build.${build}.drvPath"
             printf '\n'
           done
-          if git diff --quiet HEAD -- generated knixl.lock.kdl; then
+          # A lock-only change (e.g. a new formatter) waits for a refresh that changes fw13.
+          if git diff --quiet HEAD -- generated; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # The report covers packages only; the nixpkgs rev and hashes move on every refresh.
+      - name: Note other lock changes
+        if: steps.refresh.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          lines="$(git diff -U0 HEAD -- knixl.lock.kdl | grep -E '^[-+] *(tool|formatter|module) ' || true)"
+          if [ -n "$lines" ]; then
+            # shellcheck disable=SC2016 # the backticks are a markdown fence
+            printf '\n## Lock\n\n```diff\n%s\n```\n' "$lines" >> "$RUNNER_TEMP/report.md"
           fi
 
       # operation is "none" when an open PR already carries this refresh, so ntfy hears
